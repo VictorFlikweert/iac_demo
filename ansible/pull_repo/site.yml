@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Demonstrate ansible-pull
+      copy:
+        dest: /tmp/ansible_pull_repo.txt
+        content: "Managed via ansible-pull sample repository.\n"

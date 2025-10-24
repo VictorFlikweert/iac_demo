@@ -1,0 +1,55 @@
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs and temp files
+*.log
+logs/
+tmp/
+*.tmp
+*.bak
+*~
+*.swp
+*.swo
+
+# Python / virtual environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.*
+
+# Ansible artifacts
+*.retry
+
+# Chef artifacts
+chef/local-mode-cache/
+chef/nodes/
+chef/*.pem
+
+# Puppet artifacts
+puppet/agent/ssl/
+puppet/agent/logs/
+puppet/server/logs/
+
+# SaltStack caches
+saltstack/cache/
+
+# Docker overrides
+docker-compose.override.yml
+.docker/

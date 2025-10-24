@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create demo file
+      copy:
+        dest: /tmp/ansible_demo.txt
+        content: "Managed by Ansible pull demo.\n"

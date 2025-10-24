@@ -1,0 +1,60 @@
+services:
+  salt-master:
+    image: saltstack/salt:3006.4
+    command: salt-master -l info
+    volumes:
+      - ./saltstack/master.d:/etc/salt/master.d
+      - ./saltstack/states:/srv/salt
+    ports:
+      - "4505:4505"
+      - "4506:4506"
+
+  salt-minion:
+    image: saltstack/salt:3006.4
+    command: salt-minion -l info
+    depends_on:
+      - salt-master
+    volumes:
+      - ./saltstack/minion.d:/etc/salt/minion.d
+    hostname: salt-minion
+
+  puppetserver:
+    image: puppet/puppetserver:latest
+    environment:
+      - PUPPETSERVER_JAVA_ARGS=-Xms512m -Xmx512m
+    volumes:
+      - ./puppet/code:/etc/puppetlabs/code
+      - ./puppet/server/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/autosign.conf:/etc/puppetlabs/puppet/autosign.conf
+    ports:
+      - "8140:8140"
+
+  puppet-agent:
+    image: puppet/puppet-agent-ubuntu:latest
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+
+  ansible-pull:
+    image: cytopia/ansible:latest
+    command: sleep infinity
+    volumes:
+      - ./ansible:/workspace
+
+  chef-client:
+    image: chef/chefworkstation:latest
+    command: sleep infinity
+    environment:
+      - CHEF_LICENSE=accept
+    volumes:
+      - ./chef:/workspace
