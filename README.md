@@ -140,7 +140,7 @@ docker compose down
 
 Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `puppet/agent-2/ssl`, while the other demos are stateless so you can destroy and recreate containers without losing work.
 
-
+## Evaluation
 
 | Task | Salt Stack | Puppet | Ansible | Chef | Ansible (with AWX) | Ansible (Push + Local Cache) | Ansible Pull | Canonical Landscape | Salt Reactor + Beacons | Salt SSH (Standalone) | Rudder | CFEngine |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
