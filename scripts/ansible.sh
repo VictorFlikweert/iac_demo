@@ -3,9 +3,9 @@ set -euo pipefail
 
 CMD="$(basename "$0")"
 COMPOSE=(docker compose)
-DEFAULT_INVENTORY="/workspace/inventory.ini"
-DEFAULT_PLAYBOOK="/workspace/playbooks/local.yml"
-DEFAULT_PULL_REPO="file:///workspace/pull_repo"
+DEFAULT_INVENTORY="/tmp/ansible-pull/ansible/inventory.ini"
+DEFAULT_PLAYBOOK="/tmp/ansible-pull/ansible/playbooks/local.yml"
+DEFAULT_PULL_REPO="https://github.com/VictorFlikweert/iac_demo"
 ANSIBLE_NODES=(ansible-panelpc ansible-qg-1 ansible-qg-2)
 DEFAULT_NODE="${ANSIBLE_NODES[0]}"
 declare -A NODE_INVENTORY=(
@@ -91,7 +91,7 @@ case "$command" in
       target="$1"
       shift
     fi
-    repo="${1:-$DEFAULT_PULL_REPO}"
+    repo="${DEFAULT_PULL_REPO}"
     if [[ $# -gt 0 ]]; then
       shift
     fi

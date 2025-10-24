@@ -99,21 +99,24 @@ services:
     hostname: qg-2
 
   ansible-panelpc:
-    image: cytopia/ansible:latest
+    build:
+      context: ./ansible
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
     hostname: ansible-panelpc
 
   ansible-qg-1:
-    image: cytopia/ansible:latest
+    build:
+      context: ./ansible
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
     hostname: ansible-qg-1
 
   ansible-qg-2:
-    image: cytopia/ansible:latest
+    build:
+      context: ./ansible
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
