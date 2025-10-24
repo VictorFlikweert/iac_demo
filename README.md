@@ -54,6 +54,38 @@ docker compose pull
 
   The `demo` state simply invokes `pkg.installed` for `curl`, so every minion converges to the same baseline package set.
 
+### Beacon + Reactor Auto-Reconcile Demo
+
+The master ships with a presence beacon (`saltstack/master.d/beacons.conf`) and a matching reactor (`saltstack/master.d/reactor.conf`) that watches for minions that reconnect after downtime. When the beacon reports new arrivals, the reactor SLS at `saltstack/states/reactor/presence/reconcile.sls` launches a `state.highstate` against just those minions, bringing them back in sync automatically.
+
+Try it out:
+
+1. Start the Salt stack if it is not already running:
+   ```bash
+   docker compose up -d salt-master salt-minion-panelpc salt-minion-qg-1 salt-minion-qg-2
+   ```
+2. Follow the master log so you can see the beacon and reactor chatter:
+   ```bash
+   docker compose logs -f salt-master
+   ```
+3. Simulate an outage for one minion and bring it back:
+   ```bash
+   docker compose stop salt-minion-qg-1
+   sleep 10
+   docker compose start salt-minion-qg-1
+   ```
+4. Watch the master log: once the minion reconnects you should see a `presence` event, followed by a job that runs `state.highstate` on the returning node. Any drift (for example removing `curl` while it was offline) is corrected automatically.
+
+Need a different reconciliation? Adjust the target list in `beacons.conf` or swap out the state that runs inside `presence/reconcile.sls`.
+
+Prefer a one-liner? The helper script wraps the whole flow (logs + stop/start) for you:
+
+```bash
+scripts/saltstack.sh presence-demo [salt-minion-name]
+```
+
+It tails the master logs *and* the Salt event bus, restarts the chosen minion (default `salt-minion-qg-1`), and leaves everything online long enough to catch either the presence beacon (`salt/beacon/<minion>/presence/present`) or the built-in minion start events (`salt/minion/<minion>/start`) and the resulting auto highstate job. Tweak the dwell times with `PRESENCE_DEMO_DOWN=<seconds>` and `PRESENCE_DEMO_SETTLE=<seconds>` if you need a longer outage or observation window.
+
 ## Puppet
 
 - Manifests live under `puppet/code/environments/production/`. The sample `site.pp` simply ensures the `curl` package is present on every agent.
