@@ -6,18 +6,35 @@ COMPOSE=(docker compose)
 DEFAULT_INVENTORY="/workspace/inventory.ini"
 DEFAULT_PLAYBOOK="/workspace/playbooks/local.yml"
 DEFAULT_PULL_REPO="file:///workspace/pull_repo"
+ANSIBLE_NODES=(ansible-panelpc ansible-qg-1 ansible-qg-2)
+DEFAULT_NODE="${ANSIBLE_NODES[0]}"
+declare -A NODE_INVENTORY=(
+  [ansible-panelpc]="panelpc"
+  [ansible-qg-1]="qg-1"
+  [ansible-qg-2]="qg-2"
+)
+
+is_node() {
+  local candidate="$1"
+  for node in "${ANSIBLE_NODES[@]}"; do
+    if [[ "$node" == "$candidate" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 usage() {
   cat <<EOF
 Usage: $CMD <command> [args...]
 
 Commands:
-  start                     Start the Ansible ansible-pull container
-  stop                      Stop the Ansible container
-  status                    Show the Ansible container status
-  shell [CMD]               Open a shell (default: bash) in the ansible-pull container
-  playbook [PLAYBOOK] [...] Run ansible-playbook (default playbook: $DEFAULT_PLAYBOOK)
-  pull [REPO] [ARGS...]     Run ansible-pull (default repo: $DEFAULT_PULL_REPO)
+  start                         Start the Ansible node containers
+  stop                          Stop the Ansible containers
+  status                        Show the Ansible container status
+  shell [NODE] [CMD]            Open a shell (default: bash) in the chosen node (default: $DEFAULT_NODE)
+  playbook [NODE] [PLAYBOOK]    Run ansible-playbook inside the chosen node (auto-limited to its inventory host)
+  pull [NODE] [REPO] [ARGS...]  Run ansible-pull inside the chosen node
 EOF
 }
 
@@ -31,34 +48,54 @@ shift
 
 case "$command" in
   start)
-    "${COMPOSE[@]}" up -d ansible-pull
+    "${COMPOSE[@]}" up -d "${ANSIBLE_NODES[@]}"
     ;;
   stop)
-    "${COMPOSE[@]}" stop ansible-pull
+    "${COMPOSE[@]}" stop "${ANSIBLE_NODES[@]}"
     ;;
   status)
-    "${COMPOSE[@]}" ps ansible-pull
+    "${COMPOSE[@]}" ps "${ANSIBLE_NODES[@]}"
     ;;
   shell)
+    target="$DEFAULT_NODE"
+    if [[ $# -gt 0 ]] && is_node "$1"; then
+      target="$1"
+      shift
+    fi
     if [[ $# -eq 0 ]]; then
-      "${COMPOSE[@]}" exec -it ansible-pull bash
+      "${COMPOSE[@]}" exec -it "$target" bash
     else
-      "${COMPOSE[@]}" exec -it ansible-pull "$@"
+      "${COMPOSE[@]}" exec -it "$target" "$@"
     fi
     ;;
   playbook)
+    target="$DEFAULT_NODE"
+    if [[ $# -gt 0 ]] && is_node "$1"; then
+      target="$1"
+      shift
+    fi
     playbook="${1:-$DEFAULT_PLAYBOOK}"
     if [[ $# -gt 0 ]]; then
       shift
     fi
-    "${COMPOSE[@]}" exec ansible-pull ansible-playbook -i "$DEFAULT_INVENTORY" "$playbook" "$@"
+    inventory_host="${NODE_INVENTORY[$target]:-}"
+    args=(ansible-playbook -i "$DEFAULT_INVENTORY" "$playbook")
+    if [[ -n "$inventory_host" ]]; then
+      args+=(--limit "$inventory_host")
+    fi
+    "${COMPOSE[@]}" exec "$target" "${args[@]}" "$@"
     ;;
   pull)
+    target="$DEFAULT_NODE"
+    if [[ $# -gt 0 ]] && is_node "$1"; then
+      target="$1"
+      shift
+    fi
     repo="${1:-$DEFAULT_PULL_REPO}"
     if [[ $# -gt 0 ]]; then
       shift
     fi
-    "${COMPOSE[@]}" exec ansible-pull ansible-pull -U "$repo" -d /tmp/ansible-pull -i "$DEFAULT_INVENTORY" "$@"
+    "${COMPOSE[@]}" exec "$target" ansible-pull -U "$repo" -d /tmp/ansible-pull -i "$DEFAULT_INVENTORY" "$@"
     ;;
   *)
     usage

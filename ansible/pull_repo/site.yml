@@ -1,9 +1,9 @@
 ---
-- hosts: localhost
+- hosts: all
   connection: local
   gather_facts: false
   tasks:
-    - name: Demonstrate ansible-pull
-      copy:
-        dest: /tmp/ansible_pull_repo.txt
-        content: "Managed via ansible-pull sample repository.\n"
+    - name: Ensure curl is installed
+      package:
+        name: curl
+        state: present

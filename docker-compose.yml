@@ -9,14 +9,32 @@ services:
       - "4505:4505"
       - "4506:4506"
 
-  salt-minion:
+  salt-minion-panelpc:
     image: saltstack/salt:3006.4
     command: salt-minion -l info
     depends_on:
       - salt-master
     volumes:
-      - ./saltstack/minion.d:/etc/salt/minion.d
-    hostname: salt-minion
+      - ./saltstack/minion-panelpc.d:/etc/salt/minion.d
+    hostname: minion-panelpc
+
+  salt-minion-qg-1:
+    image: saltstack/salt:3006.4
+    command: salt-minion -l info
+    depends_on:
+      - salt-master
+    volumes:
+      - ./saltstack/minion-qg-1.d:/etc/salt/minion.d
+    hostname: minion-qg-1
+
+  salt-minion-qg-2:
+    image: saltstack/salt:3006.4
+    command: salt-minion -l info
+    depends_on:
+      - salt-master
+    volumes:
+      - ./saltstack/minion-qg-2.d:/etc/salt/minion.d
+    hostname: minion-qg-2
 
   puppetserver:
     image: puppet/puppetserver:latest
@@ -29,13 +47,13 @@ services:
     ports:
       - "8140:8140"
 
-  puppet-agent:
-    image: puppet/puppet-agent-ubuntu:latest
+  puppet-agent-panelpc:
+    image: puppet/puppet-agent-ubuntu:jammy
     depends_on:
       - puppetserver
     volumes:
-      - ./puppet/agent/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
-      - ./puppet/agent/ssl:/etc/puppetlabs/puppet/ssl
+      - ./puppet/agent-panelpc/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-panelpc/ssl:/etc/puppetlabs/puppet/ssl
     entrypoint:
       - /bin/bash
       - -lc
@@ -44,17 +62,86 @@ services:
           /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
           sleep 60
         done
+    hostname: panelpc
 
-  ansible-pull:
+  puppet-agent-qg-1:
+    image: puppet/puppet-agent-ubuntu:jammy
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent-qg-1/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-qg-1/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+    hostname: qg-1
+
+  puppet-agent-qg-2:
+    image: puppet/puppet-agent-ubuntu:jammy
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent-qg-2/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-qg-2/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+    hostname: qg-2
+
+  ansible-panelpc:
     image: cytopia/ansible:latest
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
+    hostname: ansible-panelpc
 
-  chef-client:
+  ansible-qg-1:
+    image: cytopia/ansible:latest
+    command: sleep infinity
+    volumes:
+      - ./ansible:/workspace
+    hostname: ansible-qg-1
+
+  ansible-qg-2:
+    image: cytopia/ansible:latest
+    command: sleep infinity
+    volumes:
+      - ./ansible:/workspace
+    hostname: ansible-qg-2
+
+  chef-panelpc:
     image: chef/chefworkstation:latest
     command: sleep infinity
     environment:
       - CHEF_LICENSE=accept
     volumes:
       - ./chef:/workspace
+    hostname: chef-panelpc
+
+  chef-qg-1:
+    image: chef/chefworkstation:latest
+    command: sleep infinity
+    environment:
+      - CHEF_LICENSE=accept
+    volumes:
+      - ./chef:/workspace
+    hostname: chef-qg-1
+
+  chef-qg-2:
+    image: chef/chefworkstation:latest
+    command: sleep infinity
+    environment:
+      - CHEF_LICENSE=accept
+    volumes:
+      - ./chef:/workspace
+    hostname: chef-qg-2

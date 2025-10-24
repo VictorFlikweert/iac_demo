@@ -1,9 +1,9 @@
 ---
-- hosts: localhost
+- hosts: all
   connection: local
   gather_facts: false
   tasks:
-    - name: Create demo file
-      copy:
-        dest: /tmp/ansible_demo.txt
-        content: "Managed by Ansible pull demo.\n"
+    - name: Ensure curl is installed
+      package:
+        name: curl
+        state: present
