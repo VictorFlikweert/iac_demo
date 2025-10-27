@@ -1,0 +1,8 @@
+---
+- name: Audit host state (read-only)
+  hosts: control
+  gather_facts: true
+  tasks:
+    - name: Run post-pull inspection
+      command: /srv/infra/ansible/scripts/post_pull.sh
+      changed_when: false

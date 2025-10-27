@@ -1,0 +1,1 @@
+ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts"

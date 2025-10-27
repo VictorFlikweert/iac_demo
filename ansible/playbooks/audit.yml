@@ -1,0 +1,29 @@
+---
+- name: Audit host state (read-only)
+  hosts: control
+  gather_facts: true
+  tasks:
+    - name: Collect package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Show top-level summary
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          ip: "{{ ansible_default_ipv4.address | default('n/a') }}"
+          packages_count: "{{ ansible_facts.packages | length if ansible_facts.packages is defined else 'n/a' }}"
+          running_services: "{{ services | dict2items | selectattr('value.state','equalto','running') | map(attribute='key') | list }}"
+      vars:
+        services: "{{ ansible_facts.services | default({}) }}"
+
+    - name: Fetch important configs (example)
+      ansible.builtin.fetch:
+        src: /etc/ssh/sshd_config
+        dest: "collected/{{ inventory_hostname }}/"
+        flat: yes

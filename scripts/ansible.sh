@@ -3,8 +3,8 @@ set -euo pipefail
 
 CMD="$(basename "$0")"
 COMPOSE=(docker compose)
-DEFAULT_INVENTORY="/tmp/ansible-pull/ansible/inventory.ini"
-DEFAULT_PLAYBOOK="/tmp/ansible-pull/ansible/playbooks/local.yml"
+DEFAULT_INVENTORY="/srv/infra/ansible/inventory.ini"
+DEFAULT_PLAYBOOK="/srv/infra/ansible/playbooks/update.yml"
 DEFAULT_PULL_REPO="https://github.com/VictorFlikweert/iac_demo"
 ANSIBLE_NODES=(ansible-panelpc ansible-qg-1 ansible-qg-2)
 DEFAULT_NODE="${ANSIBLE_NODES[0]}"
@@ -47,7 +47,7 @@ shift
 
 case "$command" in
   start)
-    "${COMPOSE[@]}" up -d "${ANSIBLE_NODES[@]}"
+    "${COMPOSE[@]}" up --build -d "${ANSIBLE_NODES[@]}"
     ;;
   stop)
     "${COMPOSE[@]}" stop "${ANSIBLE_NODES[@]}"
@@ -85,7 +85,9 @@ case "$command" in
     fi
 
     # TODO: Before merging to main, remove '-C ansible-pull', so that it targets the main branch instead
-    "${COMPOSE[@]}" exec "$target" ansible-pull -U "$repo" -C ansible-pull -d /tmp/ansible-pull "$playbook"
+    "${COMPOSE[@]}" exec "ansible-panelpc" ansible-pull -U "$repo" -C ansible-pull \
+      -d /srv/infra "$playbook" \
+      --extra-vars "run_mode=control_node"
     ;;
   *)
     usage

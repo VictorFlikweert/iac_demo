@@ -101,29 +101,46 @@ services:
   ansible-panelpc:
     build:
       context: ./ansible
+      dockerfile: master.Dockerfile
     command: sleep infinity
     volumes:
-      - ./ansible:/workspace
       - ./ansible/inventory.ini:/etc/ansible/hosts
+      - ./ansible/ssh:/etc/ssh
+      - ./ansible/sshd_config:/etc/ssh/sshd_config
     hostname: ansible-panelpc
+    networks:
+      ansible_net:
+        ipv4_address: 10.5.0.5
 
   ansible-qg-1:
     build:
       context: ./ansible
+      dockerfile: worker.Dockerfile
     command: sleep infinity
-    volumes:
-      - ./ansible:/workspace
-      - ./ansible/inventory.ini:/etc/ansible/hosts
     hostname: ansible-qg-1
+    ports:
+      - "2221:22"
+    volumes:
+      - ./ansible/ssh:/etc/ssh
+      - ./ansible/sshd_config:/etc/ssh/sshd_config
+    networks:
+      ansible_net:
+        ipv4_address: 10.5.0.6
 
   ansible-qg-2:
     build:
       context: ./ansible
+      dockerfile: worker.Dockerfile
     command: sleep infinity
-    volumes:
-      - ./ansible:/workspace
-      - ./ansible/inventory.ini:/etc/ansible/hosts
     hostname: ansible-qg-2
+    ports:
+      - "2222:22"
+    volumes:
+      - ./ansible/ssh:/etc/ssh
+      - ./ansible/sshd_config:/etc/ssh/sshd_config
+    networks:
+      ansible_net:
+        ipv4_address: 10.5.0.7
 
   chef-panelpc:
     image: chef/chefworkstation:latest
@@ -151,3 +168,11 @@ services:
     volumes:
       - ./chef:/workspace
     hostname: chef-qg-2
+
+networks:
+  ansible_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1

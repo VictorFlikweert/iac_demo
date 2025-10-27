@@ -1,0 +1,5 @@
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+PermitRootLogin no
+PubkeyAuthentication yes
