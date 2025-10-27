@@ -1,5 +1,5 @@
 ---
-- name: Configure worker nodes from panelpc
+- name: Install packages
   hosts: all
   become: true
   gather_facts: true

@@ -88,22 +88,19 @@ docker compose pull
 
   This brings up `ansible-panelpc` (built via `ansible/panelpc.Dockerfile` to include the SSH client) plus two SSH-enabled workers (`ansible-worker-qg-1`, `ansible-worker-qg-2`) built from `ansible/worker.Dockerfile`.
 
-- Put the demo repo under Git once (still a local file URL):
-
-  ```bash
-  cd ansible/pull_repo
-  git init
-  git add site.yml
-  git commit -m "Initial demo playbook"
-  ```
-
-- Trigger the workflow from the host:
+- Kick off the workflow from the host. By default it refreshes packages via `playbooks/update.yml` and then distributes the transfer file with `playbooks/transfer_file.yml`:
 
   ```bash
   scripts/ansible.sh pull
   ```
 
-  Internally this runs `ansible-pull -U file:///workspace/pull_repo -i /workspace/inventory.ini` on panelpc. When the pull finishes, `/workspace/scripts/post_pull.sh` executes the push playbook (`ansible/playbooks/update.yml`) against the `workers` group. Set `RUN_AUDIT=1` to chain the audit playbook.
+- Add environment overrides to tweak the run, for example to enable the audit playbook:
+
+  ```bash
+  scripts/ansible.sh pull RUN_AUDIT=1
+  ```
+
+  Inside the container this executes `/workspace/scripts/post_pull.sh`, which in turn runs `ansible-playbook` for `update.yml` and `transfer_file.yml` (plus `audit.yml` when `RUN_AUDIT=1`).
 
 - You can run additional playbooks directly against the workers from panelpc:
 
@@ -112,6 +109,28 @@ docker compose pull
   ```
 
   > **Note:** The SSH key under `ansible/ssh` is bundled purely for the lab. Replace it (and rebuild the worker images) before reusing the pattern elsewhere.
+
+### Task: Distribute a file from panelpc to the workers
+
+1. Make sure the Ansible containers are running:
+
+   ```bash
+   scripts/ansible.sh start
+   ```
+
+2. Run the bundled workflow. The first play ensures `/workspace/transfers/panelpc-note.txt` exists on panelpc, and the second play copies it to `/tmp/panelpc-note.txt` on every worker:
+
+   ```bash
+   scripts/ansible.sh pull
+   ```
+
+3. Verify the file landed on the workers:
+
+   ```bash
+   scripts/ansible.sh shell ansible-panelpc ansible workers -i /workspace/inventory.ini -a "cat /tmp/panelpc-note.txt"
+   ```
+
+   > **Customize it:** Edit `ansible/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible/playbooks/update.yml` for any package state tweaks.
 
 ## Chef Infra
 
