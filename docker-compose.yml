@@ -104,6 +104,7 @@ services:
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
+      - ./ansible/inventory.ini:/etc/ansible/hosts
     hostname: ansible-panelpc
 
   ansible-qg-1:
@@ -112,6 +113,7 @@ services:
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
+      - ./ansible/inventory.ini:/etc/ansible/hosts
     hostname: ansible-qg-1
 
   ansible-qg-2:
@@ -120,6 +122,7 @@ services:
     command: sleep infinity
     volumes:
       - ./ansible:/workspace
+      - ./ansible/inventory.ini:/etc/ansible/hosts
     hostname: ansible-qg-2
 
   chef-panelpc:

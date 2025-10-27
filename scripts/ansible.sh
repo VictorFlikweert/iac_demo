@@ -34,7 +34,6 @@ Commands:
   status                        Show the Ansible container status
   shell [NODE] [CMD]            Open a shell (default: bash) in the chosen node (default: $DEFAULT_NODE)
   playbook [NODE] [PLAYBOOK]    Run ansible-playbook inside the chosen node (auto-limited to its inventory host)
-  pull [NODE] [REPO] [ARGS...]  Run ansible-pull inside the chosen node
 EOF
 }
 
@@ -69,33 +68,24 @@ case "$command" in
     fi
     ;;
   playbook)
+    playbook="$DEFAULT_PLAYBOOK"
+
+    # do NOT shift here; we want $1 to still be the possible node
     target="$DEFAULT_NODE"
     if [[ $# -gt 0 ]] && is_node "$1"; then
       target="$1"
       shift
     fi
-    playbook="${1:-$DEFAULT_PLAYBOOK}"
-    if [[ $# -gt 0 ]]; then
-      shift
-    fi
-    inventory_host="${NODE_INVENTORY[$target]:-}"
-    args=(ansible-playbook -i "$DEFAULT_INVENTORY" "$playbook")
-    if [[ -n "$inventory_host" ]]; then
-      args+=(--limit "$inventory_host")
-    fi
-    "${COMPOSE[@]}" exec "$target" "${args[@]}" "$@"
-    ;;
-  pull)
-    target="$DEFAULT_NODE"
-    if [[ $# -gt 0 ]] && is_node "$1"; then
-      target="$1"
-      shift
-    fi
+
     repo="${DEFAULT_PULL_REPO}"
+    # do NOT shift here either; only shift if you actually parse an arg into 'repo'
     if [[ $# -gt 0 ]]; then
+      repo="$1"
       shift
     fi
-    "${COMPOSE[@]}" exec "$target" ansible-pull -U "$repo" -d /tmp/ansible-pull -i "$DEFAULT_INVENTORY" "$@"
+
+    # TODO: Before merging to main, remove '-C ansible-pull', so that it targets the main branch instead
+    "${COMPOSE[@]}" exec "$target" ansible-pull -U "$repo" -C ansible-pull -d /tmp/ansible-pull "$playbook"
     ;;
   *)
     usage
