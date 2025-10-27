@@ -4,14 +4,14 @@ set -euo pipefail
 CMD="$(basename "$0")"
 COMPOSE=(docker compose)
 DEFAULT_INVENTORY="/workspace/inventory.ini"
-DEFAULT_PLAYBOOK="/workspace/playbooks/local.yml"
+DEFAULT_PLAYBOOK="/workspace/playbooks/update.yml"
 DEFAULT_PULL_REPO="file:///workspace/pull_repo"
-ANSIBLE_NODES=(ansible-panelpc ansible-qg-1 ansible-qg-2)
+ANSIBLE_NODES=(ansible-panelpc ansible-worker-qg-1 ansible-worker-qg-2)
 DEFAULT_NODE="${ANSIBLE_NODES[0]}"
 declare -A NODE_INVENTORY=(
-  [ansible-panelpc]="panelpc"
-  [ansible-qg-1]="qg-1"
-  [ansible-qg-2]="qg-2"
+  [ansible-panelpc]=""
+  [ansible-worker-qg-1]="qg-1"
+  [ansible-worker-qg-2]="qg-2"
 )
 
 is_node() {
@@ -84,18 +84,6 @@ case "$command" in
       args+=(--limit "$inventory_host")
     fi
     "${COMPOSE[@]}" exec "$target" "${args[@]}" "$@"
-    ;;
-  pull)
-    target="$DEFAULT_NODE"
-    if [[ $# -gt 0 ]] && is_node "$1"; then
-      target="$1"
-      shift
-    fi
-    repo="${1:-$DEFAULT_PULL_REPO}"
-    if [[ $# -gt 0 ]]; then
-      shift
-    fi
-    "${COMPOSE[@]}" exec "$target" ansible-pull -U "$repo" -d /tmp/ansible-pull -i "$DEFAULT_INVENTORY" "$@"
     ;;
   *)
     usage

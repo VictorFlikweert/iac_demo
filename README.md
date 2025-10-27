@@ -77,39 +77,41 @@ docker compose pull
 
   > **Tip:** If you previously ran the old agent containers, clear the cached SSL state (`rm -rf puppet/agent-*/ssl/*`) so the new certnames (`panelpc`, `qg-1`, `qg-2`) can register cleanly with the server.
 
-## Ansible Pull
+## Ansible Pull + Push
 
-- Author playbooks under `ansible/`. Each container runs playbooks locally using the shared inventory (`panelpc`, `qg-1`, and `qg-2`).
-- Start the three nodes:
-
-  ```bash
-  docker compose up -d ansible-panelpc ansible-qg-1 ansible-qg-2
-  ```
-
-- Run the sample playbook on any node to ensure `curl` is installed:
+- The control node (`ansible-panelpc`) now pulls configuration and then pushes it to worker nodes over SSH.
+- Start or stop the fleet with the helper:
 
   ```bash
-  docker compose exec ansible-panelpc ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit panelpc
-  docker compose exec ansible-qg-1 ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit qg-1
-  docker compose exec ansible-qg-2 ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit qg-2
+  scripts/ansible.sh start   # or stop/status
   ```
 
-- To try a true `ansible-pull` workflow using the sample repo:
+  This brings up `ansible-panelpc` (built via `ansible/panelpc.Dockerfile` to include the SSH client) plus two SSH-enabled workers (`ansible-worker-qg-1`, `ansible-worker-qg-2`) built from `ansible/worker.Dockerfile`.
 
-  1. Turn `ansible/pull_repo` into a Git repository on the host:
+- Put the demo repo under Git once (still a local file URL):
 
-     ```bash
-     cd ansible/pull_repo
-     git init
-     git add site.yml
-     git commit -m "Initial demo playbook"
-     ```
+  ```bash
+  cd ansible/pull_repo
+  git init
+  git add site.yml
+  git commit -m "Initial demo playbook"
+  ```
 
-  2. Run `ansible-pull` from inside any node container, pointing at the mounted repository:
+- Trigger the workflow from the host:
 
-     ```bash
-     ansible-pull -U file:///workspace/pull_repo -d /tmp/ansible-pull -i /workspace/inventory.ini
-     ```
+  ```bash
+  scripts/ansible.sh pull
+  ```
+
+  Internally this runs `ansible-pull -U file:///workspace/pull_repo -i /workspace/inventory.ini` on panelpc. When the pull finishes, `/workspace/scripts/post_pull.sh` executes the push playbook (`ansible/playbooks/update.yml`) against the `workers` group. Set `RUN_AUDIT=1` to chain the audit playbook.
+
+- You can run additional playbooks directly against the workers from panelpc:
+
+  ```bash
+  scripts/ansible.sh playbook ansible-panelpc /workspace/playbooks/audit.yml
+  ```
+
+  > **Note:** The SSH key under `ansible/ssh` is bundled purely for the lab. Replace it (and rebuild the worker images) before reusing the pattern elsewhere.
 
 ## Chef Infra
 
@@ -142,7 +144,7 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 
 ## Evaluation
 
-| Task | Salt Stack | Puppet | Ansible | Chef | Ansible (with AWX) | Ansible (Push + Local Cache) | Ansible Pull | Canonical Landscape | Salt Reactor + Beacons | Salt SSH (Standalone) | Rudder | CFEngine |
+| Task | Salt Stack | Puppet | Chef | Ansible (with AWX) | Ansible (Push + Local Cache) | Ansible Pull | Canonical Landscape | Salt Reactor + Beacons | Salt SSH (Standalone) | Rudder | CFEngine |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Reconciliation of node states | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Creating a file on PanelPC and distribute it to worker nodes | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |

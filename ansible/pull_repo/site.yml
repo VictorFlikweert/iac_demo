@@ -1,9 +1,9 @@
 ---
-- hosts: all
-  connection: local
+- name: Pull on panelpc then push to workers
+  hosts: control
   gather_facts: false
   tasks:
-    - name: Ensure curl is installed
-      package:
-        name: curl
-        state: present
+    - name: Trigger post-pull worker update
+      ansible.builtin.command:
+        cmd: /workspace/scripts/post_pull.sh
+      changed_when: false

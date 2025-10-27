@@ -1,0 +1,4 @@
+---
+panelpc_message: |
+  Managed by panelpc via ansible-push workflow.
+  Timestamp: {{ ansible_date_time.iso8601 }}
