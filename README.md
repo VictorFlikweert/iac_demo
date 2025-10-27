@@ -144,10 +144,25 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 
 ## Evaluation
 
-| Task | Salt Stack | Puppet | Chef | Ansible (with AWX) | Ansible (Push + Local Cache) | Ansible Pull | Canonical Landscape | Salt Reactor + Beacons | Salt SSH (Standalone) | Rudder | CFEngine |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Reconciliation of node states | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Creating a file on PanelPC and distribute it to worker nodes | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Specific state for QG and DV nodes | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Specific state for PPC and worker nodes | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Ability to change node topology after deployment | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Tool | Reconcile Nodes | Distribute File | QG/DV State | PPC/Worker State | Change Topology |
+|------|------------------|-----------------|--------------|------------------|-----------------|
+| Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Puppet | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Chef | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
+| Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
+| CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+### Ansible
+* ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.
+
+* ✅ Distribute File: Built-in modules (copy, template, fetch) make this straightforward.
+
+* ✅ QG/DV State: Different playbooks or inventory groups handle environment-specific configs.
+
+* ✅ PPC/Worker State: Host group variables and roles fit this model perfectly.
+
+* 🚧 Change Topology: Requires manual edits to inventory or dynamic scripts; no auto-reconfiguration.
