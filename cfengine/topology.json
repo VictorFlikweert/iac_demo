@@ -1,0 +1,43 @@
+{
+  "defaults": {
+    "packages": ["curl", "vim-tiny"],
+    "broadcast_message": "Edge PanelPC broadcast message for worker nodes.",
+    "motd_path": "/etc/motd",
+    "motd_title": "CFEngine Demo Fleet"
+  },
+  "roles": {
+    "panelpc": {
+      "packages": ["git"],
+      "broadcast_path": "/opt/cfdemo/panelpc/broadcast.txt",
+      "motd_label": "PanelPC"
+    },
+    "worker": {
+      "packages": ["jq"],
+      "broadcast_path": "/opt/cfdemo/broadcasts/broadcast.txt",
+      "motd_label": "Worker"
+    },
+    "qg": {
+      "packages": ["tmux"],
+      "motd_label": "QG"
+    },
+    "dv": {
+      "packages": ["build-essential"],
+      "motd_label": "DV"
+    }
+  },
+  "hosts": {
+    "cfengine-panelpc": {
+      "roles": ["panelpc"],
+      "motd_header": "PanelPC Orchestrator"
+    },
+    "cfengine-qg-1": {
+      "roles": ["worker", "qg"],
+      "motd_header": "QG Worker"
+    },
+    "cfengine-qg-2": {
+      "roles": ["worker", "dv"],
+      "motd_header": "DV Worker"
+    }
+  }
+}
+

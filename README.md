@@ -158,6 +158,34 @@ docker compose pull
 
   > **Tip:** If you already had the containers running before switching to the Chef Workstation image, recreate them (`docker compose up -d --force-recreate chef-panelpc chef-qg-1 chef-qg-2`) so the updated tooling is available.
 
+## CFEngine Community
+
+- Policy lives under `cfengine/`: `promises.cf` pulls in the generated data bundle alongside the role logic in `services/cfengine_demo.cf`.
+- Containers build from the local `cfengine/Dockerfile` (Ubuntu 22.04 + CFEngine Community packages). The first `docker compose` run fetches the upstream repo metadata, so expect a longer build when images are missing.
+- Start the local-mode agents with the helper:
+
+  ```bash
+  scripts/cfengine.sh start   # stop/status available too
+  ```
+
+- Converge all nodes (or a specific target) on demand; this runs `cf-agent -KI` inside each container against the shared policy mount:
+
+  ```bash
+  scripts/cfengine.sh converge            # all nodes
+  scripts/cfengine.sh converge cfengine-qg-1
+  ```
+
+- Regenerate the derived data (`services/generated_topology.cf`) whenever you edit `cfengine/topology.json`. The helper will attempt to call `python3` on the host—if it is unavailable, install it or generate the file through another interpreter before converging:
+
+  ```bash
+  scripts/cfengine.sh render
+  ```
+
+- The policy enforces the baseline packages, role-specific packages, shared broadcast message (PanelPC writes to `/opt/cfdemo/panelpc/broadcast.txt`, workers mirror it to `/opt/cfdemo/broadcasts/broadcast.txt`), and an MOTD summary driven by `topology.json`.
+- Update topology, package sets, or broadcast paths by editing `cfengine/topology.json`; regenerate the bundle and rerun `scripts/cfengine.sh converge` to apply the new mapping.
+
+  > **Call-out:** If your host lacks Python, rely on the checked-in `services/generated_topology.cf` or run `scripts/cfengine.sh render` from a machine with Python available; the containers already ship with Python and CFEngine tooling for direct experimentation.
+
 ## Cleanup
 
 Stop the environment when you are finished:
@@ -176,8 +204,7 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 | Puppet | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
-| Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
-| CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+| CFEngine | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Salt Stack
 * ✅ Reconcile Nodes: `state.highstate` enforces the topology-aware `demo` SLS, installing shared and role-specific packages while keeping MOTD in sync across every minion.
@@ -203,6 +230,17 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 * ✅ PPC/Worker State: Host group variables and roles fit this model perfectly.
 
 * 🚧 Change Topology: Requires manual edits to inventory or dynamic scripts; no auto-reconfiguration.
+
+### CFEngine
+* ✅ Reconcile Nodes: `scripts/cfengine.sh converge` runs `cf-agent -KI -f /workspace/promises.cf`, applying packages, files, and MOTD updates on each node.
+
+* ✅ Distribute File: PanelPC writes `/opt/cfdemo/panelpc/broadcast.txt`, and workers enforce the same content at `/opt/cfdemo/broadcasts/broadcast.txt` from the shared topology data.
+
+* ✅ QG/DV State: Role-driven package lists in `topology.json` add QG utilities (`tmux`) and DV toolchains (`build-essential`) only where their roles are present.
+
+* ✅ PPC/Worker State: PanelPC picks up orchestration tooling (`git`) while workers inherit runtime helpers (`jq`) on top of the shared baseline.
+
+* ✅ Change Topology: Update `cfengine/topology.json`, regenerate the bundle (`scripts/cfengine.sh render`), and reconverge to push the new role mapping without editing policy code.
 
 ### Puppet
 * ✅ Reconcile Nodes: `class demo` enforces packages, files, and MOTD across every agent via the new module under `puppet/code/environments/production/modules/demo`.
