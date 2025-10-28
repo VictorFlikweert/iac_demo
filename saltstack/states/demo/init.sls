@@ -68,7 +68,7 @@ Manage topology-aware packages, broadcast files, and MOTD for the Salt demo.
   file.directory:
     - user: root
     - group: root
-    - mode: 755
+    - mode: '0755'
 
 {% if common_packages %}
 common-packages:
@@ -89,7 +89,7 @@ panelpc-packages:
     - makedirs: True
     - user: root
     - group: root
-    - mode: 755
+    - mode: '0755'
     - require:
       - file: {{ shared_root }}
 
@@ -100,7 +100,7 @@ panelpc-broadcast-file:
     - template: jinja
     - user: root
     - group: root
-    - mode: 644
+    - mode: '0644'
     - context:
         panelpc_message: {{ panelpc_message | yaml_dquote }}
         panelpc_hosts: {{ panelpc_hosts_sorted }}
@@ -122,7 +122,7 @@ worker-packages:
     - makedirs: True
     - user: root
     - group: root
-    - mode: 755
+    - mode: '0755'
 
 distributed-broadcast-file:
   file.managed:
@@ -163,7 +163,7 @@ dv-packages:
     - template: jinja
     - user: root
     - group: root
-    - mode: 644
+    - mode: '0644'
     - context:
         hostname: {{ minion_id | yaml_dquote }}
         roles: {{ roles_sorted }}
