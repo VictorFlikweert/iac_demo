@@ -1,0 +1,111 @@
+bundle common cfengine_demo_data
+{
+  vars:
+      "canonical_host" string => canonify("$(sys.fqhost)");
+      "broadcast_message" string => "$(cfengine_demo_generated.broadcast_message)";
+      "motd_title" string => "$(cfengine_demo_generated.motd_title)";
+      "motd_path" string => "$(cfengine_demo_generated.motd_path)";
+      "managed_directories" slist => { @(cfengine_demo_generated.managed_directories) };
+
+  classes:
+      "cfengine_host_known" expression => isvariable("cfengine_demo_generated.packages[$(canonical_host)]");
+      "cfengine_has_broadcast" expression => isvariable("cfengine_demo_generated.broadcast_target[$(canonical_host)]");
+
+  vars:
+      cfengine_host_known::
+        "host_display" string => "$(cfengine_demo_generated.host_display[$(canonical_host)])";
+        "packages" slist => { @(cfengine_demo_generated.packages[$(canonical_host)]) };
+        "roles" slist => { @(cfengine_demo_generated.roles[$(canonical_host)]) };
+        "friendly_roles" slist => { @(cfengine_demo_generated.motd_roles[$(canonical_host)]) };
+        "friendly_roles_line" string => "$(cfengine_demo_generated.motd_roles_line[$(canonical_host)])";
+        "motd_header" string => "$(cfengine_demo_generated.motd_header[$(canonical_host)])";
+      !cfengine_host_known::
+        "host_display" string => "$(sys.fqhost)";
+        "packages" slist => { };
+        "roles" slist => { };
+        "friendly_roles" slist => { };
+        "friendly_roles_line" string => "Unassigned";
+        "motd_header" string => "Unassigned";
+      cfengine_has_broadcast::
+        "broadcast_target" string => "$(cfengine_demo_generated.broadcast_target[$(canonical_host)])";
+}
+
+bundle agent cfengine_demo
+{
+  methods:
+      "directories" usebundle => cfengine_demo_directories;
+      "packages" usebundle => cfengine_demo_packages;
+      "files" usebundle => cfengine_demo_files;
+      "motd" usebundle => cfengine_demo_motd;
+
+  reports:
+      !cfengine_host_known::
+        "CFEngine demo: host '$(cfengine_demo_data.host_display)' not present in topology.json; nothing to enforce.";
+}
+
+bundle agent cfengine_demo_directories
+{
+  vars:
+      "managed_dirs" slist => { @(cfengine_demo_data.managed_directories) };
+      "managed_dirs_joined" string => join("$(managed_dirs)", " ");
+
+  commands:
+      "/usr/bin/install -d -m 0755 $(managed_dirs_joined)";
+
+  cfengine_has_broadcast::
+    vars:
+        "broadcast_dir" string => dirname("$(cfengine_demo_data.broadcast_target)");
+
+    commands:
+        "/usr/bin/install -d -m 0755 $(broadcast_dir)";
+}
+
+bundle agent cfengine_demo_packages
+{
+  vars:
+      cfengine_host_known::
+        "packages_joined" string => join("$(cfengine_demo_data.packages)", " ");
+
+  commands:
+      cfengine_host_known::
+        "/usr/bin/apt-get update";
+      cfengine_host_known::
+        "/usr/bin/apt-get install -y $(packages_joined)";
+}
+
+bundle agent cfengine_demo_files
+{
+  files:
+      cfengine_has_broadcast::
+        "$(cfengine_demo_data.broadcast_target)"
+          create => "true",
+          perms => cfengine_demo_perms("root", "root", "0644"),
+          content => format("%s\n", $(cfengine_demo_data.broadcast_message));
+}
+
+bundle agent cfengine_demo_motd
+{
+  vars:
+      cfengine_host_known::
+        "motd_body" string => format(
+          "%s\n\nHost: %s\nRoles: %s\nMessage: %s\n",
+          $(cfengine_demo_data.motd_title),
+          $(cfengine_demo_data.host_display),
+          $(cfengine_demo_data.friendly_roles_line),
+          $(cfengine_demo_data.broadcast_message)
+        );
+
+  files:
+      cfengine_host_known::
+        "$(cfengine_demo_data.motd_path)"
+          create => "true",
+          perms => cfengine_demo_perms("root", "root", "0644"),
+          content => "$(motd_body)";
+}
+
+body perms cfengine_demo_perms(owner, group, mode)
+{
+  owners => { "$(owner)" };
+  groups => { "$(group)" };
+  mode => "$(mode)";
+}

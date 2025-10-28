@@ -148,3 +148,27 @@ services:
     volumes:
       - ./chef:/workspace
     hostname: chef-qg-2
+
+  cfengine-panelpc:
+    build:
+      context: ./cfengine
+    command: sleep infinity
+    volumes:
+      - ./cfengine:/workspace
+    hostname: cfengine-panelpc
+
+  cfengine-qg-1:
+    build:
+      context: ./cfengine
+    command: sleep infinity
+    volumes:
+      - ./cfengine:/workspace
+    hostname: cfengine-qg-1
+
+  cfengine-qg-2:
+    build:
+      context: ./cfengine
+    command: sleep infinity
+    volumes:
+      - ./cfengine:/workspace
+    hostname: cfengine-qg-2

@@ -1,0 +1,8 @@
+body common control
+{
+  bundlesequence => { "cfengine_demo" };
+  inputs => {
+    "services/generated_topology.cf",
+    "services/cfengine_demo.cf"
+  };
+}
