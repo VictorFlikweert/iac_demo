@@ -5,6 +5,7 @@ services:
     volumes:
       - ./saltstack/master.d:/etc/salt/master.d
       - ./saltstack/states:/srv/salt
+      - ./saltstack/pillar:/srv/pillar
     ports:
       - "4505:4505"
       - "4506:4506"

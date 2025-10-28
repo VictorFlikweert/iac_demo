@@ -1,0 +1,8 @@
+Salt Demo Node
+Minion ID: {{ hostname }}
+Roles: {{ roles | join(', ') }}
+
+PanelPC nodes: {{ panelpc_hosts | join(', ') if panelpc_hosts else 'none' }}
+Worker nodes: {{ worker_hosts | join(', ') if worker_hosts else 'none' }}
+QG nodes: {{ qg_hosts | join(', ') if qg_hosts else 'none' }}
+DV nodes: {{ dv_hosts | join(', ') if dv_hosts else 'none' }}
