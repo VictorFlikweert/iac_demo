@@ -1,0 +1,1 @@
+QG tier: developer utilities (tmux, jq) preinstalled via Landscape orchestration.

@@ -1,0 +1,91 @@
+{
+  "templates": {
+    "panelpc-broadcast": {
+      "fallback_file": "/workspace/state/broadcasts/panelpc-note.txt",
+      "default_content": "Landscape broadcast placeholder",
+      "export": {
+        "node": "landscape-panelpc",
+        "key": "broadcast.panelpc"
+      }
+    }
+  },
+  "groups": {
+    "base": {
+      "apt_update": true,
+      "packages": [
+        "curl"
+      ],
+      "files": [
+        {
+          "path": "/etc/landscape-demo/motd.d/00-landscape",
+          "content_file": "/workspace/state/templates/motd-base.txt",
+          "mode": "0644"
+        }
+      ]
+    },
+    "panelpc": {
+      "extends": "base",
+      "packages": [
+        "git"
+      ],
+      "files": [
+        {
+          "path": "/workspace/data/broadcast.txt",
+          "template": "panelpc-broadcast",
+          "mode": "0644"
+        }
+      ],
+      "exports": [
+        {
+          "key": "broadcast.panelpc",
+          "path": "/workspace/data/broadcast.txt",
+          "encoding": "utf-8"
+        }
+      ]
+    },
+    "worker": {
+      "extends": "base",
+      "packages": [
+        "jq"
+      ],
+      "files": [
+        {
+          "path": "/opt/landscape/broadcast.txt",
+          "template": "panelpc-broadcast",
+          "mode": "0644"
+        }
+      ]
+    },
+    "qg": {
+      "extends": "worker",
+      "packages": [
+        "tmux"
+      ],
+      "files": [
+        {
+          "path": "/etc/landscape-demo/motd.d/10-qg",
+          "content_file": "/workspace/state/templates/motd-qg.txt",
+          "mode": "0644"
+        }
+      ]
+    },
+    "dv": {
+      "extends": "worker",
+      "packages": [
+        "build-essential"
+      ],
+      "files": [
+        {
+          "path": "/etc/landscape-demo/motd.d/10-dv",
+          "content_file": "/workspace/state/templates/motd-dv.txt",
+          "mode": "0644"
+        }
+      ]
+    }
+  },
+  "topology": {
+    "landscape-panelpc": "panelpc",
+    "landscape-qg-1": "qg",
+    "landscape-qg-2": "dv"
+  }
+}

@@ -22,6 +22,7 @@ Wrapper scripts in `scripts/` streamline common workflows:
 - `scripts/puppet.sh`: manage the server and both agents, follow logs, or trigger `puppet agent --test` on either node.
 - `scripts/ansible.sh`: start/stop the three pull nodes, open shells, run playbooks, or execute `ansible-pull` runs.
 - `scripts/chef.sh`: start/stop the three local-mode clients, open shells, or run converges.
+- `scripts/landscape.sh`: orchestrate the Landscape demo controller, trigger reconciles, adjust topology, and manage the broadcast seed file.
 
 Each script prints usage details when invoked without arguments.
 
@@ -153,6 +154,42 @@ docker compose pull
 
   > **Tip:** If you already had the containers running before switching to the Chef Workstation image, recreate them (`docker compose up -d --force-recreate chef-panelpc chef-qg-1 chef-qg-2`) so the updated tooling is available.
 
+## Canonical Landscape Demo
+
+- A lightweight controller (`landscape-controller`) serves desired state and collects exports from three agents (`landscape-panelpc`, `landscape-qg-1`, `landscape-qg-2`).
+- Start or stop the fleet with the helper:
+
+  ```bash
+  scripts/landscape.sh start   # or stop/status
+  ```
+
+- Trigger immediate reconciles or inspect rendered policy without waiting for the 30-second loop:
+
+  ```bash
+  scripts/landscape.sh reconcile         # run once on every node
+  scripts/landscape.sh state landscape-qg-1
+  ```
+
+- The helper auto-starts any missing containers, so you can invoke `reconcile`, `state`, or `shell` directly and it will launch dependencies as needed.
+
+- PanelPC owns the broadcast file (`/workspace/data/broadcast.txt`). Replace the seed content and have Landscape push it to workers:
+
+  ```bash
+  scripts/landscape.sh broadcast ./landscape/state/broadcasts/panelpc-note.txt
+  scripts/landscape.sh reconcile
+  docker compose exec landscape-qg-1 cat /opt/landscape/broadcast.txt
+  ```
+
+- Swap a node between tiers without touching container builds—Landscape recalculates packages and files on the fly:
+
+  ```bash
+  scripts/landscape.sh topology landscape-qg-2 worker
+  scripts/landscape.sh reconcile landscape-qg-2
+  docker compose exec landscape-qg-2 dpkg -l jq | grep ^ii
+  ```
+
+- Each agent refreshes apt caches on demand (`apt_update: true`) and enforces tier-specific MOTD fragments under `/etc/landscape-demo/motd.d/` so you can see the group identity from inside the container.
+
 ## Cleanup
 
 Stop the environment when you are finished:
@@ -171,10 +208,9 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 | Puppet | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
-| Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Canonical Landscape | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
 | CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
 
 ### Chef
@@ -183,6 +219,13 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 * ✅ QG/DV State: Group-specific package arrays deliver QG utilities (`tmux`) and DV toolchains (`build-essential`).
 * ✅ PPC/Worker State: PanelPC pulls in orchestration tooling (`git`) while workers gain their runtime helpers (`jq`).
 * ✅ Change Topology: Adjust `chef/topology.yml` and rerun the converge to reassign nodes without altering code.
+
+### Canonical Landscape
+* ✅ Reconcile Nodes: Agents poll the controller every 30 seconds (or on demand with `reconcile`) and enforce packages plus managed files.
+* ✅ Distribute File: PanelPC exports its broadcast file and the controller templates it onto every worker at `/opt/landscape/broadcast.txt`.
+* ✅ QG/DV State: Group inheritance layers QG utilities (`tmux`) and DV build tooling (`build-essential`) on top of the worker baseline.
+* ✅ PPC/Worker State: PanelPC receives control-plane tools (`git`) and owns the broadcast seed while workers inherit lighter runtime helpers (`jq`).
+* ✅ Change Topology: `scripts/landscape.sh topology <node> <group>` edits the desired state live—agents adopt new tiers on their next poll.
 
 ### Ansible
 * ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.

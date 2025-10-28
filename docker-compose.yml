@@ -147,3 +147,58 @@ services:
     volumes:
       - ./chef:/workspace
     hostname: chef-qg-2
+
+  landscape-controller:
+    build:
+      context: ./landscape
+      dockerfile: controller.Dockerfile
+    hostname: landscape-controller
+    volumes:
+      - ./landscape/state:/workspace/state
+      - ./landscape/controller:/workspace/controller
+    ports:
+      - "8028:8028"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8028/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  landscape-panelpc:
+    build:
+      context: ./landscape
+      dockerfile: agent.Dockerfile
+    depends_on:
+      - landscape-controller
+    environment:
+      - LANDSCAPE_CONTROLLER=http://landscape-controller:8028
+      - LANDSCAPE_NODE_NAME=landscape-panelpc
+    volumes:
+      - ./landscape/node-data/panelpc:/workspace/data
+      - ./landscape/agent:/opt/landscape
+
+  landscape-qg-1:
+    build:
+      context: ./landscape
+      dockerfile: agent.Dockerfile
+    depends_on:
+      - landscape-controller
+    environment:
+      - LANDSCAPE_CONTROLLER=http://landscape-controller:8028
+      - LANDSCAPE_NODE_NAME=landscape-qg-1
+    volumes:
+      - ./landscape/node-data/qg-1:/workspace/data
+      - ./landscape/agent:/opt/landscape
+
+  landscape-qg-2:
+    build:
+      context: ./landscape
+      dockerfile: agent.Dockerfile
+    depends_on:
+      - landscape-controller
+    environment:
+      - LANDSCAPE_CONTROLLER=http://landscape-controller:8028
+      - LANDSCAPE_NODE_NAME=landscape-qg-2
+    volumes:
+      - ./landscape/node-data/qg-2:/workspace/data
+      - ./landscape/agent:/opt/landscape
