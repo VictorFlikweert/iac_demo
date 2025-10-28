@@ -1,0 +1,14 @@
+---
+panelpc:
+  hosts:
+    - chef-panelpc
+workers:
+  hosts:
+    - chef-qg-1
+    - chef-qg-2
+qg:
+  hosts:
+    - chef-qg-1
+    - chef-qg-2
+dv:
+  hosts: []

@@ -134,7 +134,7 @@ docker compose pull
 
 ## Chef Infra
 
-- Cookbooks are under `chef/cookbooks/`. The bundled `demo` run list simply ensures `curl` is present on each client.
+- Cookbooks live in `chef/cookbooks/`. The `demo` run list now reconciles shared state using `/workspace/topology.yml`: it installs the common package baseline, manages the PanelPC broadcast file for worker nodes, and applies QG/DV specific packages while refreshing an informative MOTD.
 - Start the three clients:
 
   ```bash
@@ -148,6 +148,8 @@ docker compose pull
   docker compose exec chef-qg-1 chef-client -z -c /workspace/client.rb -o demo
   docker compose exec chef-qg-2 chef-client -z -c /workspace/client.rb -o demo
   ```
+
+- Adjust node membership or add new tiers by editing `chef/topology.yml` on the host (mounted at `/workspace/topology.yml` in the containers) and re-running the converge command.
 
   > **Tip:** If you already had the containers running before switching to the Chef Workstation image, recreate them (`docker compose up -d --force-recreate chef-panelpc chef-qg-1 chef-qg-2`) so the updated tooling is available.
 
@@ -167,13 +169,20 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 |------|------------------|-----------------|--------------|------------------|-----------------|
 | Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Puppet | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Chef | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
 | Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
 | CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+### Chef
+* ✅ Reconcile Nodes: `chef-client` converges every run-list item, ensuring packages, files, and MOTD stay in the declared state.
+* ✅ Distribute File: PanelPC maintains `shared/panelpc/broadcast.txt` and worker nodes mirror it to `/opt/panelpc/broadcast.txt`.
+* ✅ QG/DV State: Group-specific package arrays deliver QG utilities (`tmux`) and DV toolchains (`build-essential`).
+* ✅ PPC/Worker State: PanelPC pulls in orchestration tooling (`git`) while workers gain their runtime helpers (`jq`).
+* ✅ Change Topology: Adjust `chef/topology.yml` and rerun the converge to reassign nodes without altering code.
 
 ### Ansible
 * ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.

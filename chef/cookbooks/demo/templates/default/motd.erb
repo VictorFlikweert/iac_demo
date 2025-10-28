@@ -1,0 +1,11 @@
+Managed by Chef Demo Cookbook
+
+Hostname: <%= @hostname %>
+Roles: <%= @roles.join(', ') %>
+
+PanelPC nodes: <%= @panelpc_hosts.join(', ') %>
+Worker nodes: <%= @worker_hosts.join(', ') %>
+QG nodes: <%= @qg_hosts.join(', ') %>
+DV nodes: <%= @dv_hosts.join(', ') %>
+
+This system is automatically reconciled to the desired state on every converge.
