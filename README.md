@@ -169,13 +169,20 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 |------|------------------|-----------------|--------------|------------------|-----------------|
 | Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Puppet | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Chef | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
 | Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
 | CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+### Chef
+* ✅ Reconcile Nodes: `chef-client` converges every run-list item, ensuring packages, files, and MOTD stay in the declared state.
+* ✅ Distribute File: PanelPC maintains `shared/panelpc/broadcast.txt` and worker nodes mirror it to `/opt/panelpc/broadcast.txt`.
+* ✅ QG/DV State: Group-specific package arrays deliver QG utilities (`tmux`) and DV toolchains (`build-essential`).
+* ✅ PPC/Worker State: PanelPC pulls in orchestration tooling (`git`) while workers gain their runtime helpers (`jq`).
+* ✅ Change Topology: Adjust `chef/topology.yml` and rerun the converge to reassign nodes without altering code.
 
 ### Ansible
 * ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.
