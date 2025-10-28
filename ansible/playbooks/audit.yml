@@ -1,0 +1,24 @@
+---
+- name: Audit worker state
+  hosts: workers
+  gather_facts: true
+  tasks:
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Report presence of panelpc file
+      ansible.builtin.stat:
+        path: /opt/panelpc/from_panelpc.txt
+      register: panelpc_file
+
+    - name: Display file audit summary
+      ansible.builtin.debug:
+        msg:
+          - "panelpc file exists: {{ panelpc_file.stat.exists }}"
+          - "panelpc message checksum: {{ panelpc_file.stat.checksum | default('n/a') }}"
+
+    - name: Report common package presence
+      ansible.builtin.debug:
+        msg: "{{ item }} present={{ 'yes' if ansible_facts.packages[item] is defined else 'no' }}"
+      loop: "{{ common_packages }}"

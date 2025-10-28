@@ -1,0 +1,17 @@
+---
+- name: Install packages
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Update and upgrade apt packages
+      ansible.builtin.apt:
+        upgrade: true
+        update_cache: true
+        # Trigger force refresh
+        cache_valid_time: 0
+
+    - name: Install common packages
+      ansible.builtin.package:
+        name: "{{ common_packages }}"
+        state: present

@@ -77,39 +77,60 @@ docker compose pull
 
   > **Tip:** If you previously ran the old agent containers, clear the cached SSL state (`rm -rf puppet/agent-*/ssl/*`) so the new certnames (`panelpc`, `qg-1`, `qg-2`) can register cleanly with the server.
 
-## Ansible Pull
+## Ansible Pull + Push
 
-- Author playbooks under `ansible/`. Each container runs playbooks locally using the shared inventory (`panelpc`, `qg-1`, and `qg-2`).
-- Start the three nodes:
-
-  ```bash
-  docker compose up -d ansible-panelpc ansible-qg-1 ansible-qg-2
-  ```
-
-- Run the sample playbook on any node to ensure `curl` is installed:
+- The control node (`ansible-panelpc`) now pulls configuration and then pushes it to worker nodes over SSH.
+- Start or stop the fleet with the helper:
 
   ```bash
-  docker compose exec ansible-panelpc ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit panelpc
-  docker compose exec ansible-qg-1 ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit qg-1
-  docker compose exec ansible-qg-2 ansible-playbook -i /workspace/inventory.ini /workspace/playbooks/local.yml --limit qg-2
+  scripts/ansible.sh start   # or stop/status
   ```
 
-- To try a true `ansible-pull` workflow using the sample repo:
+  This brings up `ansible-panelpc` (built via `ansible/panelpc.Dockerfile` to include the SSH client) plus two SSH-enabled workers (`ansible-worker-qg-1`, `ansible-worker-qg-2`) built from `ansible/worker.Dockerfile`.
 
-  1. Turn `ansible/pull_repo` into a Git repository on the host:
+- Kick off the workflow from the host. By default it refreshes packages via `playbooks/update.yml` and then distributes the transfer file with `playbooks/transfer_file.yml`:
 
-     ```bash
-     cd ansible/pull_repo
-     git init
-     git add site.yml
-     git commit -m "Initial demo playbook"
-     ```
+  ```bash
+  scripts/ansible.sh pull
+  ```
 
-  2. Run `ansible-pull` from inside any node container, pointing at the mounted repository:
+- Add environment overrides to tweak the run, for example to enable the audit playbook:
 
-     ```bash
-     ansible-pull -U file:///workspace/pull_repo -d /tmp/ansible-pull -i /workspace/inventory.ini
-     ```
+  ```bash
+  scripts/ansible.sh pull RUN_AUDIT=1
+  ```
+
+  Inside the container this executes `/workspace/scripts/post_pull.sh`, which in turn runs `ansible-playbook` for `update.yml` and `transfer_file.yml` (plus `audit.yml` when `RUN_AUDIT=1`).
+
+- You can run additional playbooks directly against the workers from panelpc:
+
+  ```bash
+  scripts/ansible.sh playbook ansible-panelpc /workspace/playbooks/audit.yml
+  ```
+
+  > **Note:** The SSH key under `ansible/ssh` is bundled purely for the lab. Replace it (and rebuild the worker images) before reusing the pattern elsewhere.
+
+### Task: Distribute a file from panelpc to the workers
+
+1. Make sure the Ansible containers are running:
+
+   ```bash
+   scripts/ansible.sh start
+   ```
+
+2. Run the bundled workflow. The first play ensures `/workspace/transfers/panelpc-note.txt` exists on panelpc, and the second play copies it to `/tmp/panelpc-note.txt` on every worker:
+
+   ```bash
+   scripts/ansible.sh pull
+   ```
+
+3. Verify the file landed on the workers:
+
+   ```bash
+   scripts/ansible.sh shell ansible-panelpc ansible workers -i /workspace/inventory.ini -a "cat /tmp/panelpc-note.txt"
+   ```
+
+   > **Customize it:** Edit `ansible/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible/playbooks/update.yml` for any package state tweaks.
 
 ## Chef Infra
 
@@ -144,10 +165,25 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 
 ## Evaluation
 
-| Task | Salt Stack | Puppet | Ansible | Chef | Ansible (with AWX) | Ansible (Push + Local Cache) | Ansible Pull | Canonical Landscape | Salt Reactor + Beacons | Salt SSH (Standalone) | Rudder | CFEngine |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Reconciliation of node states | [ ] | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Creating a file on PanelPC and distribute it to worker nodes | [ ] | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Specific state for QG and DV nodes | [ ] | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Specific state for PPC and worker nodes | [ ] | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Ability to change node topology after deployment | [ ] | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Tool | Reconcile Nodes | Distribute File | QG/DV State | PPC/Worker State | Change Topology |
+|------|------------------|-----------------|--------------|------------------|-----------------|
+| Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Puppet | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Chef | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
+| Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
+| CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+### Ansible
+* ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.
+
+* ✅ Distribute File: Built-in modules (copy, template, fetch) make this straightforward.
+
+* ✅ QG/DV State: Different playbooks or inventory groups handle environment-specific configs.
+
+* ✅ PPC/Worker State: Host group variables and roles fit this model perfectly.
+
+* 🚧 Change Topology: Requires manual edits to inventory or dynamic scripts; no auto-reconfiguration.

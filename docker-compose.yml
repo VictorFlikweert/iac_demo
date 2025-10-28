@@ -99,25 +99,27 @@ services:
     hostname: qg-2
 
   ansible-panelpc:
-    image: cytopia/ansible:latest
+    build:
+      context: ./ansible
+      dockerfile: panelpc.Dockerfile
     command: sleep infinity
+    environment:
+      - ANSIBLE_CONFIG=/workspace/ansible.cfg
     volumes:
       - ./ansible:/workspace
     hostname: ansible-panelpc
 
-  ansible-qg-1:
-    image: cytopia/ansible:latest
-    command: sleep infinity
-    volumes:
-      - ./ansible:/workspace
-    hostname: ansible-qg-1
+  ansible-worker-qg-1:
+    build:
+      context: ./ansible
+      dockerfile: worker.Dockerfile
+    hostname: ansible-worker-qg-1
 
-  ansible-qg-2:
-    image: cytopia/ansible:latest
-    command: sleep infinity
-    volumes:
-      - ./ansible:/workspace
-    hostname: ansible-qg-2
+  ansible-worker-qg-2:
+    build:
+      context: ./ansible
+      dockerfile: worker.Dockerfile
+    hostname: ansible-worker-qg-2
 
   chef-panelpc:
     image: chef/chefworkstation:latest
