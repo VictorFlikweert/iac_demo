@@ -172,8 +172,6 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 | Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
 | Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
 | CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
 
