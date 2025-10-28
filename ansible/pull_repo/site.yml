@@ -1,9 +1,0 @@
----
-- hosts: all
-  connection: local
-  gather_facts: false
-  tasks:
-    - name: Ensure curl is installed
-      package:
-        name: curl
-        state: present

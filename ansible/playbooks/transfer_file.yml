@@ -1,0 +1,52 @@
+---
+- name: Prepare transfer file on panelpc
+  hosts: control
+  gather_facts: false
+  vars:
+    panelpc_transfer_dir: /workspace/transfers
+    panelpc_transfer_file: "{{ panelpc_transfer_dir }}/panelpc-note.txt"
+    panelpc_transfer_content: |
+      Hello from panelpc
+  tasks:
+    - name: Ensure transfer directory exists
+      ansible.builtin.file:
+        path: "{{ panelpc_transfer_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create or update panelpc note
+      ansible.builtin.copy:
+        dest: "{{ panelpc_transfer_file }}"
+        content: "{{ panelpc_transfer_content }}\n"
+        mode: "0644"
+
+- name: Distribute panelpc file to workers
+  hosts: workers
+  gather_facts: false
+  vars:
+    control_host: "{{ groups['control'][0] }}"
+    panelpc_transfer_dir: /workspace/transfers
+    panelpc_transfer_file: "{{ panelpc_transfer_dir }}/panelpc-note.txt"
+    worker_transfer_dest: /tmp/panelpc-note.txt
+    worker_transfer_owner: ansible
+  tasks:
+    - name: Check for panelpc transfer file
+      ansible.builtin.stat:
+        path: "{{ panelpc_transfer_file }}"
+      register: panelpc_transfer_stat
+      delegate_to: "{{ control_host }}"
+      run_once: true
+
+    - name: Abort when transfer file missing on panelpc
+      ansible.builtin.fail:
+        msg: "Transfer file {{ panelpc_transfer_file }} is missing on {{ control_host }}."
+      when: not panelpc_transfer_stat.stat.exists
+      run_once: true
+
+    - name: Copy panelpc note to worker
+      ansible.builtin.copy:
+        content: "{{ lookup('file', panelpc_transfer_file) }}"
+        dest: "{{ worker_transfer_dest }}"
+        owner: "{{ worker_transfer_owner }}"
+        group: "{{ worker_transfer_owner }}"
+        mode: "0644"
