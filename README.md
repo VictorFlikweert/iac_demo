@@ -18,7 +18,7 @@ The compose file keeps configurations on the host so you can iterate quickly on 
 
 Wrapper scripts in `scripts/` streamline common workflows:
 
-- `scripts/saltstack.sh`: start/stop the master and all minions, run states, or open a shell on the master.
+- `scripts/saltstack.sh`: start/stop the master and all minions, run targeted states or highstate, sync modules, inspect pillar data, or open a shell on the master.
 - `scripts/puppet.sh`: manage the server and both agents, follow logs, or trigger `puppet agent --test` on either node.
 - `scripts/ansible.sh`: start/stop the three pull nodes, open shells, run playbooks, or execute `ansible-pull` runs.
 - `scripts/chef.sh`: start/stop the three local-mode clients, open shells, or run converges.
@@ -33,26 +33,31 @@ docker compose pull
 
 ## SaltStack
 
-- Configuration lives under `saltstack/`. Each minion mounts its own config directory (see `saltstack/minion-panelpc.d`, `saltstack/minion-qg-1.d`, and `saltstack/minion-qg-2.d`).
-- Start the master and all minions:
+- Configuration lives under `saltstack/`: `states/demo` contains the topology-aware state, while `pillar/demo.sls` holds the editable data model (roles, packages, broadcast message, topology defaults).
+- Launch the environment with the helper:
 
   ```bash
-  docker compose up -d salt-master salt-minion-panelpc salt-minion-qg-1 salt-minion-qg-2
+  scripts/saltstack.sh start   # stop/status available too
   ```
 
-- Auto-accept is enabled, but you can still verify keys:
+  Auto-accept remains enabled, so new minions register immediately; use `scripts/saltstack.sh shell salt-key --list-all` if you still want to inspect keys.
 
-  ```bash
-  docker compose exec salt-master salt-key --list-all
-  ```
-
-- Apply the sample state to ensure `curl` is installed everywhere:
+- Apply the Salt demo to every minion (defaults: target `minion-*`, state `demo`):
 
   ```bash
   scripts/saltstack.sh state
   ```
 
-  The `demo` state simply invokes `pkg.installed` for `curl`, so every minion converges to the same baseline package set.
+  Swap in specific targets or pass extra Salt arguments (`scripts/saltstack.sh state 'minion-qg-*' demo test=True`) and lean on `highstate`, `sync`, and `pillar` subcommands when iterating:
+
+  ```bash
+  scripts/saltstack.sh highstate           # reconcile the full top file
+  scripts/saltstack.sh sync                # saltutil.sync_all after edits
+  scripts/saltstack.sh pillar minion-qg-1  # inspect merged pillar data
+  ```
+
+- The `demo` state enforces shared packages (`curl`, `vim-tiny`), role packages (panelpc `git`, workers `jq`, QG `tmux`, DV `build-essential`), manages `/opt/saltdemo/panelpc/broadcast.txt`, distributes the same message to workers at `/opt/saltdemo/broadcasts/broadcast.txt`, and refreshes `/etc/motd` with current roles and topology context.
+- Adjust group membership or package mixes by editing `saltstack/pillar/demo.sls` on the host, syncing, and re-running `scripts/saltstack.sh highstate`. Add minion IDs to the pillar host lists to cover new targets without touching state code.
 
 ## Puppet
 
@@ -167,15 +172,19 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 
 | Tool | Reconcile Nodes | Distribute File | QG/DV State | PPC/Worker State | Change Topology |
 |------|------------------|-----------------|--------------|------------------|-----------------|
-| Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Salt Stack | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Puppet | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
-| Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Salt Reactor + Beacons | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Salt SSH (Standalone) | ☐ | ☐ | ☐ | ☐ | ☐ |
 | Rudder | ☐ | ☐ | ☐ | ☐ | ☐ |
 | CFEngine | ☐ | ☐ | ☐ | ☐ | ☐ |
+
+### Salt Stack
+* ✅ Reconcile Nodes: `state.highstate` enforces the topology-aware `demo` SLS, installing shared and role-specific packages while keeping MOTD in sync across every minion.
+* ✅ Distribute File: PanelPC writes `/opt/saltdemo/panelpc/broadcast.txt` and workers converge `/opt/saltdemo/broadcasts/broadcast.txt` from the same template.
+* ✅ QG/DV State: Pillar-driven role lists deliver QG utilities (`tmux`) and DV toolchains (`build-essential`) only where required.
+* ✅ PPC/Worker State: PanelPC brings in orchestration tooling (`git`) while worker nodes inherit runtime helpers (`jq`) alongside the common baseline.
+* ✅ Change Topology: Update `saltstack/pillar/demo.sls`, run `scripts/saltstack.sh sync` and `highstate`, and new host mappings apply without editing state code.
 
 ### Chef
 * ✅ Reconcile Nodes: `chef-client` converges every run-list item, ensuring packages, files, and MOTD stay in the declared state.

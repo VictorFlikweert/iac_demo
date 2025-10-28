@@ -1,0 +1,7 @@
+PanelPC Broadcast
+Generated for {{ current_host }}
+
+PanelPC nodes: {{ panelpc_hosts | join(', ') if panelpc_hosts else 'none' }}
+Worker nodes: {{ worker_hosts | join(', ') if worker_hosts else 'none' }}
+
+{{ panelpc_message | trim }}
