@@ -48,7 +48,7 @@ services:
       - "8140:8140"
 
   puppet-agent-panelpc:
-    image: puppet/puppet-agent-ubuntu:jammy
+    image: puppet/puppet-agent-ubuntu:latest
     depends_on:
       - puppetserver
     volumes:
@@ -65,7 +65,7 @@ services:
     hostname: panelpc
 
   puppet-agent-qg-1:
-    image: puppet/puppet-agent-ubuntu:jammy
+    image: puppet/puppet-agent-ubuntu:latest
     depends_on:
       - puppetserver
     volumes:
@@ -82,7 +82,7 @@ services:
     hostname: qg-1
 
   puppet-agent-qg-2:
-    image: puppet/puppet-agent-ubuntu:jammy
+    image: puppet/puppet-agent-ubuntu:latest
     depends_on:
       - puppetserver
     volumes:

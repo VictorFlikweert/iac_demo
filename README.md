@@ -168,7 +168,7 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 | Tool | Reconcile Nodes | Distribute File | QG/DV State | PPC/Worker State | Change Topology |
 |------|------------------|-----------------|--------------|------------------|-----------------|
 | Salt Stack | ☐ | ☐ | ☐ | ☐ | ☐ |
-| Puppet | ☐ | ☐ | ☐ | ☐ | ☐ |
+| Puppet | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
 | Canonical Landscape | ☐ | ☐ | ☐ | ☐ | ☐ |
@@ -194,3 +194,14 @@ Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `
 * ✅ PPC/Worker State: Host group variables and roles fit this model perfectly.
 
 * 🚧 Change Topology: Requires manual edits to inventory or dynamic scripts; no auto-reconfiguration.
+
+### Puppet
+* ✅ Reconcile Nodes: `class demo` enforces packages, files, and MOTD across every agent via the new module under `puppet/code/environments/production/modules/demo`.
+
+* ✅ Distribute File: PanelPC renders `/opt/puppetdemo/panelpc/broadcast.txt`, and worker agents sync the same content to `/opt/puppetdemo/broadcasts/broadcast.txt`.
+
+* ✅ QG/DV State: Role-aware package lists from Hiera add QG utilities (`tmux`) and DV toolchains (`build-essential`) only where needed.
+
+* ✅ PPC/Worker State: PanelPC picks up orchestration tools (`git`) while workers inherit helpers (`jq`) alongside the common baseline.
+
+* ✅ Change Topology: Adjust host membership in `puppet/code/environments/production/data/common.yaml` (or add per-node YAML files) and rerun `scripts/puppet.sh test <agent>` to reconverge with the new mapping.
