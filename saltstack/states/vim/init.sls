@@ -1,2 +1,2 @@
-emacs:
+neovim:
   pkg.installed: []

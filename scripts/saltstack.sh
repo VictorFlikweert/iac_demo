@@ -37,12 +37,7 @@ case "$command" in
     "${COMPOSE[@]}" ps salt-master salt-minion-panelpc salt-minion-qg-1 salt-minion-qg-2
     ;;
   state)
-    target="minion-*"
-    if [[ $# -gt 0 && "$1" != -* ]]; then
-      target="$1"
-      shift
-    fi
-    "${COMPOSE[@]}" exec salt-master salt "$target" state.apply "$@"
+    "${COMPOSE[@]}" exec salt-master salt "*" state.apply
     ;;
   shell)
     if [[ $# -eq 0 ]]; then
