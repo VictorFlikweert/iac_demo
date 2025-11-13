@@ -13,7 +13,7 @@ Commands:
   stop           Stop the Salt containers
   status         Show the Salt containers status
   state [TARGET] [ARGS]
-                 Run salt <target> state.apply (default target: 'minion-*')
+                 Run salt <target> state.apply (default target: '*')
   shell [CMD]    Open a shell (default: bash) in the salt-master container
 EOF
 }
@@ -37,7 +37,7 @@ case "$command" in
     "${COMPOSE[@]}" ps salt-master salt-minion-qg-1 salt-minion-qg-2
     ;;
   state)
-    target="minion-*"
+    target="*"
     if [[ $# -gt 0 && "$1" != -* ]]; then
       target="$1"
       shift

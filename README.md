@@ -2,7 +2,7 @@
 
 This repository provides a Docker Compose driven lab for exploring multiple infrastructure-as-code (IaC) tools side-by-side:
 
-- SaltStack (master with two minions: `minion-qg-1`, `minion-qg-2`)
+- SaltStack (Ubuntu-based master manages itself plus worker minions `minion-qg-1` and `minion-qg-2`)
 - Puppet (server with three agents installing `curl`)
 - Ansible using `ansible-pull` on three containers (`ansible-panelpc`, `ansible-qg-1`, `ansible-qg-2`)
 - Chef Infra Client (three local-mode clients matching the Ansible nodes)
@@ -18,7 +18,7 @@ The compose file keeps configurations on the host so you can iterate quickly on 
 
 Wrapper scripts in `scripts/` streamline common workflows:
 
-- `scripts/saltstack.sh`: start/stop the Salt master and worker minions, run states, or open a shell on the master.
+- `scripts/saltstack.sh`: start/stop the Salt master (with its built-in minion) plus the worker minions, run states, or open a shell on the master.
 - `scripts/puppet.sh`: manage the server and both agents, follow logs, or trigger `puppet agent --test` on either node.
 - `scripts/ansible.sh`: start/stop the three pull nodes, open shells, run playbooks, or execute `ansible-pull` runs.
 - `scripts/chef.sh`: start/stop the three local-mode clients, open shells, or run converges.
@@ -33,8 +33,8 @@ docker compose pull
 
 ## SaltStack
 
-- Configuration lives under `saltstack/`. Each minion mounts its own config directory (see `saltstack/minion-qg-1.d` and `saltstack/minion-qg-2.d`).
-- Start the master and both minions:
+- Configuration lives under `saltstack/`. The master reads `saltstack/master.d` and `/srv/salt`, while each minion (including the master's own minion under `saltstack/minion-master.d`) mounts its corresponding `saltstack/minion-*.d` directory. All Salt containers now start from the stock `ubuntu:22.04` image, installing `salt-master`/`salt-minion` packages on boot so they resemble real hosts (the first `docker compose up` takes a bit longer while apt downloads packages).
+- Start the master (which now runs both `salt-master` and `salt-minion`) along with the worker minions:
 
   ```bash
   docker compose up -d salt-master salt-minion-qg-1 salt-minion-qg-2
@@ -46,13 +46,13 @@ docker compose pull
   docker compose exec salt-master salt-key --list-all
   ```
 
-- Apply the sample state to ensure `curl` is installed everywhere:
+- Apply the sample state to ensure `curl` is installed everywhere (including on `salt-master` itself):
 
   ```bash
   scripts/saltstack.sh state
   ```
 
-  The `demo` state simply invokes `pkg.installed` for `curl`, so every minion converges to the same baseline package set.
+  The `demo` state simply invokes `pkg.installed` for `curl`, so every minion (the master’s own minion plus the two workers) converges to the same baseline package set. Target just the master with `scripts/saltstack.sh state salt-master`.
 
 ## Puppet
 
