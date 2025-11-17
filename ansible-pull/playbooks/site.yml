@@ -1,0 +1,11 @@
+---
+# Master playbook to run the workflow in order.
+- import_playbook: update.yml
+
+- import_playbook: transfer_file.yml
+
+- import_playbook: install_boxes_on_ppc.yml
+
+- import_playbook: audit.yml
+  tags:
+    - audit

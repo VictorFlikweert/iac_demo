@@ -2,4 +2,3 @@
 common_packages:
   - curl
   - vim-tiny
-

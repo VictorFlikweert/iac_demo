@@ -10,11 +10,6 @@ DEFAULT_INVENTORY="/workspace/inventory.ini"
 DEFAULT_PLAYBOOK="/workspace/playbooks/update.yml"
 ANSIBLE_NODES=(ansible-panelpc ansible-worker-qg-1 ansible-worker-qg-2)
 DEFAULT_NODE="${ANSIBLE_NODES[0]}"
-declare -A NODE_INVENTORY=(
-  [ansible-panelpc]=""
-  [ansible-worker-qg-1]="qg-1"
-  [ansible-worker-qg-2]="qg-2"
-)
 
 is_node() {
   local candidate="$1"
@@ -88,11 +83,7 @@ case "$command" in
     if [[ $# -gt 0 ]]; then
       shift
     fi
-    inventory_host="${NODE_INVENTORY[$target]:-}"
     args=(ansible-playbook -i "$DEFAULT_INVENTORY" "$playbook")
-    if [[ -n "$inventory_host" ]]; then
-      args+=(--limit "$inventory_host")
-    fi
     "${COMPOSE[@]}" exec "$target" "${args[@]}" "$@"
     ;;
   pull)

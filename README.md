@@ -68,9 +68,9 @@ docker compose pull
   scripts/ansible.sh start   # or stop/status
   ```
 
-  This brings up `ansible-panelpc` (built via `ansible/panelpc.Dockerfile` to include the SSH client) plus two SSH-enabled workers (`ansible-worker-qg-1`, `ansible-worker-qg-2`) built from `ansible/worker.Dockerfile`.
+  This brings up `ansible-panelpc` (built via `ansible-pull/panelpc.Dockerfile` to include the SSH client) plus two SSH-enabled workers (`ansible-worker-qg-1`, `ansible-worker-qg-2`) built from `ansible-pull/worker.Dockerfile`.
 
-- Kick off the workflow from the host. By default it refreshes packages via `playbooks/update.yml` and then distributes the transfer file with `playbooks/transfer_file.yml`:
+- Kick off the workflow from the host. By default it runs the master playbook `playbooks/site.yml`, which imports `update.yml`, then `transfer_file.yml`, and finally `audit.yml`:
 
   ```bash
   scripts/ansible.sh pull
@@ -82,7 +82,7 @@ docker compose pull
   scripts/ansible.sh pull RUN_AUDIT=1
   ```
 
-  Inside the container this executes `/workspace/scripts/post_pull.sh`, which in turn runs `ansible-playbook` for `update.yml` and `transfer_file.yml` (plus `audit.yml` when `RUN_AUDIT=1`).
+  Inside the container this executes `/workspace/scripts/post_pull.sh`, which in turn runs `ansible-pull` against the checked-out repo for `playbooks/site.yml` with `--limit all`. The `audit.yml` import is tagged `audit`, so it runs only when `RUN_AUDIT=1` (otherwise it is skipped).
 
 - You can run additional playbooks directly against the workers from panelpc:
 
@@ -90,7 +90,7 @@ docker compose pull
   scripts/ansible.sh playbook ansible-panelpc /workspace/playbooks/audit.yml
   ```
 
-  > **Note:** The SSH key under `ansible/ssh` is bundled purely for the lab. Replace it (and rebuild the worker images) before reusing the pattern elsewhere.
+  > **Note:** The SSH key under `ansible-pull/ssh` is bundled purely for the lab. Replace it (and rebuild the worker images) before reusing the pattern elsewhere.
 
 ### Task: Distribute a file from panelpc to the workers
 
@@ -108,11 +108,11 @@ docker compose pull
 
 3. Verify the file landed on the workers:
 
-   ```bash
-   scripts/ansible.sh shell ansible-panelpc ansible workers -i /workspace/inventory.ini -a "cat /tmp/panelpc-note.txt"
-   ```
+  ```bash
+  scripts/ansible.sh shell ansible-panelpc ansible workers -i /workspace/inventory.ini -a "cat /tmp/panelpc-note.txt"
+  ```
 
-   > **Customize it:** Edit `ansible/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible/playbooks/update.yml` for any package state tweaks.
+   > **Customize it:** Edit `ansible-pull/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible-pull/playbooks/update.yml` for any package state tweaks.
 
 ## Cleanup
 

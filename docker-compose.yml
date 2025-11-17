@@ -39,23 +39,23 @@ services:
 
   ansible-panelpc:
     build:
-      context: ./ansible
+      context: ./ansible-pull
       dockerfile: panelpc.Dockerfile
     command: sleep infinity
     environment:
       - ANSIBLE_CONFIG=/workspace/ansible.cfg
     volumes:
-      - ./ansible:/workspace
+      - ./ansible-pull:/workspace
     hostname: ansible-panelpc
 
   ansible-worker-qg-1:
     build:
-      context: ./ansible
+      context: ./ansible-pull
       dockerfile: worker.Dockerfile
     hostname: ansible-worker-qg-1
 
   ansible-worker-qg-2:
     build:
-      context: ./ansible
+      context: ./ansible-pull
       dockerfile: worker.Dockerfile
     hostname: ansible-worker-qg-2
