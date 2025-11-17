@@ -1,4 +1,0 @@
-PanelPC Broadcast
-Targets: chef-qg-1, chef-qg-2
-
-PanelPC broadcast: keep nodes in sync with the latest instructions.
