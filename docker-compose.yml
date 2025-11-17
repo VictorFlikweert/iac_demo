@@ -41,7 +41,7 @@ services:
     build:
       context: ./ansible-pull
       dockerfile: panelpc.Dockerfile
-    command: sleep infinity
+    command: ["/bin/bash", "-lc", "node_exporter & sleep infinity"]
     environment:
       - ANSIBLE_CONFIG=/workspace/ansible.cfg
     volumes:
@@ -52,10 +52,43 @@ services:
     build:
       context: ./ansible-pull
       dockerfile: worker.Dockerfile
+    command: ["/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e"]
     hostname: ansible-worker-qg-1
 
   ansible-worker-qg-2:
     build:
       context: ./ansible-pull
       dockerfile: worker.Dockerfile
+    command: ["/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e"]
     hostname: ansible-worker-qg-2
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - pushgateway
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped

@@ -9,6 +9,7 @@ RUN apt-get update \
         python3 \
         python3-apt \
         python3-distutils \
+        prometheus-node-exporter \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash ansible \

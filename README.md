@@ -6,6 +6,7 @@ This repository provides a Docker Compose driven lab for exploring multiple infr
 - Puppet (server with three agents installing `curl`)
 - Ansible using `ansible-pull` on three containers (`ansible-panelpc`, `ansible-qg-1`, `ansible-qg-2`)
 - Chef Infra Client (three local-mode clients matching the Ansible nodes)
+- Observability stack (Prometheus + Grafana scraping to watch the lab containers, node_exporter inside the Ansible and Salt nodes, salt-exporter via salt-api, and an Ansible callback pushing run metrics to Pushgateway)
 
 The compose file keeps configurations on the host so you can iterate quickly on states/manifests/playbooks/cookbooks without rebuilding containers.
 
@@ -42,22 +43,21 @@ docker compose pull
 
   Auto-accept remains enabled, so new minions register immediately; use `scripts/saltstack.sh shell salt-key --list-all` if you still want to inspect keys.
 
-- Apply the Salt demo to every minion (defaults: target `minion-*`, state `demo`):
+- Apply the Salt site state to every minion (defaults: target `*`, state `site`):
 
   ```bash
   scripts/saltstack.sh state
   ```
 
-  Swap in specific targets or pass extra Salt arguments (`scripts/saltstack.sh state 'minion-qg-*' demo test=True`) and lean on `highstate`, `sync`, and `pillar` subcommands when iterating:
+  Swap in specific targets or pass extra Salt arguments (`scripts/saltstack.sh state 'minion-qg-*' site test=True`) and lean on `highstate`, `sync`, and `pillar` subcommands when iterating:
 
   ```bash
   scripts/saltstack.sh highstate           # reconcile the full top file
   scripts/saltstack.sh sync                # saltutil.sync_all after edits
-  scripts/saltstack.sh pillar minion-qg-1  # inspect merged pillar data
+  scripts/saltstack.sh pillar minion-qg-1  # inspect merged pillar/grain data
   ```
 
-- The `demo` state enforces shared packages (`curl`, `vim-tiny`), role packages (panelpc `git`, workers `jq`, QG `tmux`, DV `build-essential`), manages `/opt/saltdemo/panelpc/broadcast.txt`, distributes the same message to workers at `/opt/saltdemo/broadcasts/broadcast.txt`, and refreshes `/etc/motd` with current roles and topology context.
-- Adjust group membership or package mixes by editing `saltstack/pillar/demo.sls` on the host, syncing, and re-running `scripts/saltstack.sh highstate`. Add minion IDs to the pillar host lists to cover new targets without touching state code.
+- The `common` state refreshes packages and installs `curl`/`vim-tiny`. `transfer` deploys a note from panelpc to workers, and `audit` gathers simple file/package facts when enabled via the `run_audit` grain.
 
 ## Ansible Pull
 
@@ -114,6 +114,20 @@ docker compose pull
 
    > **Customize it:** Edit `ansible-pull/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible-pull/playbooks/update.yml` for any package state tweaks.
 
+## Observability (Prometheus + Grafana)
+
+- Services `prometheus`, `grafana`, and `pushgateway` are defined in `docker-compose.yml`. Prometheus scrapes itself and node_exporter on Ansible/Salt nodes (`:9100`), `salt-exporter` running on the Salt master (`:9191`, via salt-api), and the Pushgateway for Ansible run metrics.
+- Start everything (including metrics) with:
+
+  ```bash
+  docker compose up -d
+  ```
+
+- Access Prometheus at http://localhost:9090 and Grafana at http://localhost:3000 (admin/admin by default). Grafana auto-provisions a Prometheus data source pointing at the in-compose Prometheus.
+
+- Prometheus config lives at `prometheus/prometheus.yml`; Grafana datasource provisioning lives at `grafana/provisioning/datasources/prometheus.yml`. Targets include `node_exporter_iac` (Salt master/minions and Ansible nodes), `salt_exporter` (metrics via salt-api on the master), `pushgateway` (Ansible run metrics) with container labels.
+- The Salt master runs `salt-api` plus `salt-exporter` with a PAM user `exporter`/`exporter` as per the salt-exporter quickstart. Ansible pulls use a custom callback in `/workspace/callback_plugins/prometheus_pushgateway.py` (enabled in `ansible.cfg`) to push playbook metrics to the Pushgateway (`PROM_PUSHGATEWAY_URL` overrideable).
+
 ## Cleanup
 
 Stop the environment when you are finished:
@@ -121,5 +135,3 @@ Stop the environment when you are finished:
 ```bash
 docker compose down
 ```
-
-Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `puppet/agent-2/ssl`, while the other demos are stateless so you can destroy and recreate containers without losing work.
