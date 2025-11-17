@@ -6,7 +6,7 @@ This repository provides a Docker Compose driven lab for exploring multiple infr
 - Puppet (server with three agents installing `curl`)
 - Ansible using `ansible-pull` on three containers (`ansible-panelpc`, `ansible-qg-1`, `ansible-qg-2`)
 - Chef Infra Client (three local-mode clients matching the Ansible nodes)
-- Observability stack (Prometheus + Grafana scraping to watch the lab containers, node_exporter inside the Ansible and Salt nodes, salt-exporter via salt-api, and an Ansible callback pushing run metrics to Pushgateway)
+- Observability stack (Prometheus + Grafana scraping to watch the lab containers, node_exporter inside the Ansible and Salt nodes, Salt state beacons pushing state metrics to Pushgateway, and an Ansible callback pushing run metrics to Pushgateway)
 
 The compose file keeps configurations on the host so you can iterate quickly on states/manifests/playbooks/cookbooks without rebuilding containers.
 
@@ -116,7 +116,7 @@ docker compose pull
 
 ## Observability (Prometheus + Grafana)
 
-- Services `prometheus`, `grafana`, and `pushgateway` are defined in `docker-compose.yml`. Prometheus scrapes itself and node_exporter on Ansible/Salt nodes (`:9100`), `salt-exporter` running on the Salt master (`:9191`, via salt-api), and the Pushgateway for Ansible run metrics.
+- Services `prometheus`, `grafana`, and `pushgateway` are defined in `docker-compose.yml`. Prometheus scrapes itself and node_exporter on Ansible/Salt nodes (`:9100`), Pushgateway for Ansible run metrics and Salt state metrics (pushed by a custom beacon), and cAdvisor for container metrics if enabled.
 - Start everything (including metrics) with:
 
   ```bash
@@ -125,8 +125,8 @@ docker compose pull
 
 - Access Prometheus at http://localhost:9090 and Grafana at http://localhost:3000 (admin/admin by default). Grafana auto-provisions a Prometheus data source pointing at the in-compose Prometheus.
 
-- Prometheus config lives at `prometheus/prometheus.yml`; Grafana datasource provisioning lives at `grafana/provisioning/datasources/prometheus.yml`. Targets include `node_exporter_iac` (Salt master/minions and Ansible nodes), `salt_exporter` (metrics via salt-api on the master), `pushgateway` (Ansible run metrics) with container labels.
-- The Salt master runs `salt-api` plus `salt-exporter` with a PAM user `exporter`/`exporter` as per the salt-exporter quickstart. Ansible pulls use a custom callback in `/workspace/callback_plugins/prometheus_pushgateway.py` (enabled in `ansible.cfg`) to push playbook metrics to the Pushgateway (`PROM_PUSHGATEWAY_URL` overrideable).
+- Prometheus config lives at `prometheus/prometheus.yml`; Grafana datasource provisioning lives at `grafana/provisioning/datasources/prometheus.yml`. Targets include `node_exporter_iac` (Salt master/minions and Ansible nodes) and `pushgateway` (Ansible run metrics plus Salt state beacon metrics).
+- Salt minions sync a custom beacon (`_beacons/state_metrics.py`) via the `beacons` state. The beacon watches `state.apply` return events and pushes success/change/failure counts and durations to the Pushgateway under the `salt_state` job. Ansible pulls use a custom callback in `/workspace/callback_plugins/prometheus_pushgateway.py` (enabled in `ansible.cfg`) to push playbook metrics to the Pushgateway (`PROM_PUSHGATEWAY_URL` overrideable).
 
 ## Cleanup
 
