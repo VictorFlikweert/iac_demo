@@ -59,30 +59,7 @@ docker compose pull
 - The `demo` state enforces shared packages (`curl`, `vim-tiny`), role packages (panelpc `git`, workers `jq`, QG `tmux`, DV `build-essential`), manages `/opt/saltdemo/panelpc/broadcast.txt`, distributes the same message to workers at `/opt/saltdemo/broadcasts/broadcast.txt`, and refreshes `/etc/motd` with current roles and topology context.
 - Adjust group membership or package mixes by editing `saltstack/pillar/demo.sls` on the host, syncing, and re-running `scripts/saltstack.sh highstate`. Add minion IDs to the pillar host lists to cover new targets without touching state code.
 
-## Puppet
-
-- Manifests live under `puppet/code/environments/production/`. The sample `site.pp` simply ensures the `curl` package is present on every agent.
-- Start the server and the three agents (each based on the Jammy Ubuntu Puppet agent image):
-
-  ```bash
-  docker compose up -d puppetserver puppet-agent-panelpc puppet-agent-qg-1 puppet-agent-qg-2
-  ```
-
-- The server autosigns agent certificates (`puppet/autosign.conf`). Agents loop every 60 seconds, so you can follow their logs:
-
-  ```bash
-  docker compose logs -f puppet-agent-panelpc puppet-agent-qg-1 puppet-agent-qg-2
-  ```
-
-- Use the helper to trigger a test run on any node when you want an immediate converge:
-
-  ```bash
-  scripts/puppet.sh test puppet-agent-panelpc
-  ```
-
-  > **Tip:** If you previously ran the old agent containers, clear the cached SSL state (`rm -rf puppet/agent-*/ssl/*`) so the new certnames (`panelpc`, `qg-1`, `qg-2`) can register cleanly with the server.
-
-## Ansible Pull + Push
+## Ansible Pull
 
 - The control node (`ansible-panelpc`) now pulls configuration and then pushes it to worker nodes over SSH.
 - Start or stop the fleet with the helper:
@@ -137,55 +114,6 @@ docker compose pull
 
    > **Customize it:** Edit `ansible/playbooks/transfer_file.yml` to change the payload content, destinations, or ownership, and adjust `ansible/playbooks/update.yml` for any package state tweaks.
 
-## Chef Infra
-
-- Cookbooks live in `chef/cookbooks/`. The `demo` run list now reconciles shared state using `/workspace/topology.yml`: it installs the common package baseline, manages the PanelPC broadcast file for worker nodes, and applies QG/DV specific packages while refreshing an informative MOTD.
-- Start the three clients:
-
-  ```bash
-  docker compose up -d chef-panelpc chef-qg-1 chef-qg-2
-  ```
-
-- Converge each client in local mode:
-
-  ```bash
-  docker compose exec chef-panelpc chef-client -z -c /workspace/client.rb -o demo
-  docker compose exec chef-qg-1 chef-client -z -c /workspace/client.rb -o demo
-  docker compose exec chef-qg-2 chef-client -z -c /workspace/client.rb -o demo
-  ```
-
-- Adjust node membership or add new tiers by editing `chef/topology.yml` on the host (mounted at `/workspace/topology.yml` in the containers) and re-running the converge command.
-
-  > **Tip:** If you already had the containers running before switching to the Chef Workstation image, recreate them (`docker compose up -d --force-recreate chef-panelpc chef-qg-1 chef-qg-2`) so the updated tooling is available.
-
-## CFEngine Community
-
-- Policy lives under `cfengine/`: `promises.cf` pulls in the generated data bundle alongside the role logic in `services/cfengine_demo.cf`.
-- Containers build from the local `cfengine/Dockerfile` (Ubuntu 22.04 + CFEngine Community packages). The first `docker compose` run fetches the upstream repo metadata, so expect a longer build when images are missing.
-- Start the local-mode agents with the helper:
-
-  ```bash
-  scripts/cfengine.sh start   # stop/status available too
-  ```
-
-- Converge all nodes (or a specific target) on demand; this runs `cf-agent -KI` inside each container against the shared policy mount:
-
-  ```bash
-  scripts/cfengine.sh converge            # all nodes
-  scripts/cfengine.sh converge cfengine-qg-1
-  ```
-
-- Regenerate the derived data (`services/generated_topology.cf`) whenever you edit `cfengine/topology.json`. The helper will attempt to call `python3` on the host—if it is unavailable, install it or generate the file through another interpreter before converging:
-
-  ```bash
-  scripts/cfengine.sh render
-  ```
-
-- The policy enforces the baseline packages, role-specific packages, shared broadcast message (PanelPC writes to `/opt/cfdemo/panelpc/broadcast.txt`, workers mirror it to `/opt/cfdemo/broadcasts/broadcast.txt`), and an MOTD summary driven by `topology.json`.
-- Update topology, package sets, or broadcast paths by editing `cfengine/topology.json`; regenerate the bundle and rerun `scripts/cfengine.sh converge` to apply the new mapping.
-
-  > **Call-out:** If your host lacks Python, rely on the checked-in `services/generated_topology.cf` or run `scripts/cfengine.sh render` from a machine with Python available; the containers already ship with Python and CFEngine tooling for direct experimentation.
-
 ## Cleanup
 
 Stop the environment when you are finished:
@@ -195,60 +123,3 @@ docker compose down
 ```
 
 Persistent data such as Puppet certificates live inside `puppet/agent/ssl` and `puppet/agent-2/ssl`, while the other demos are stateless so you can destroy and recreate containers without losing work.
-
-## Evaluation
-
-| Tool | Reconcile Nodes | Distribute File | QG/DV State | PPC/Worker State | Change Topology |
-|------|------------------|-----------------|--------------|------------------|-----------------|
-| Salt Stack | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Puppet | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Chef | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Ansible (Push + Pull) | ⚙️ | ✅ | ✅ | ✅ | 🚧 |
-| CFEngine | ✅ | ✅ | ✅ | ✅ | ✅ |
-
-### Salt Stack
-* ✅ Reconcile Nodes: `state.highstate` enforces the topology-aware `demo` SLS, installing shared and role-specific packages while keeping MOTD in sync across every minion.
-* ✅ Distribute File: PanelPC writes `/opt/saltdemo/panelpc/broadcast.txt` and workers converge `/opt/saltdemo/broadcasts/broadcast.txt` from the same template.
-* ✅ QG/DV State: Pillar-driven role lists deliver QG utilities (`tmux`) and DV toolchains (`build-essential`) only where required.
-* ✅ PPC/Worker State: PanelPC brings in orchestration tooling (`git`) while worker nodes inherit runtime helpers (`jq`) alongside the common baseline.
-* ✅ Change Topology: Update `saltstack/pillar/demo.sls`, run `scripts/saltstack.sh sync` and `highstate`, and new host mappings apply without editing state code.
-
-### Chef
-* ✅ Reconcile Nodes: `chef-client` converges every run-list item, ensuring packages, files, and MOTD stay in the declared state.
-* ✅ Distribute File: PanelPC maintains `shared/panelpc/broadcast.txt` and worker nodes mirror it to `/opt/panelpc/broadcast.txt`.
-* ✅ QG/DV State: Group-specific package arrays deliver QG utilities (`tmux`) and DV toolchains (`build-essential`).
-* ✅ PPC/Worker State: PanelPC pulls in orchestration tooling (`git`) while workers gain their runtime helpers (`jq`).
-* ✅ Change Topology: Adjust `chef/topology.yml` and rerun the converge to reassign nodes without altering code.
-
-### Ansible
-* ⚙️ Reconcile Nodes: Idempotent, but no persistent agent to continuously enforce state. Use cron or AWX for periodic enforcement.
-
-* ✅ Distribute File: Built-in modules (copy, template, fetch) make this straightforward.
-
-* ✅ QG/DV State: Different playbooks or inventory groups handle environment-specific configs.
-
-* ✅ PPC/Worker State: Host group variables and roles fit this model perfectly.
-
-* 🚧 Change Topology: Requires manual edits to inventory or dynamic scripts; no auto-reconfiguration.
-
-### CFEngine
-* ✅ Reconcile Nodes: `scripts/cfengine.sh converge` runs `cf-agent -KI -f /workspace/promises.cf`, applying packages, files, and MOTD updates on each node.
-
-* ✅ Distribute File: PanelPC writes `/opt/cfdemo/panelpc/broadcast.txt`, and workers enforce the same content at `/opt/cfdemo/broadcasts/broadcast.txt` from the shared topology data.
-
-* ✅ QG/DV State: Role-driven package lists in `topology.json` add QG utilities (`tmux`) and DV toolchains (`build-essential`) only where their roles are present.
-
-* ✅ PPC/Worker State: PanelPC picks up orchestration tooling (`git`) while workers inherit runtime helpers (`jq`) on top of the shared baseline.
-
-* ✅ Change Topology: Update `cfengine/topology.json`, regenerate the bundle (`scripts/cfengine.sh render`), and reconverge to push the new role mapping without editing policy code.
-
-### Puppet
-* ✅ Reconcile Nodes: `class demo` enforces packages, files, and MOTD across every agent via the new module under `puppet/code/environments/production/modules/demo`.
-
-* ✅ Distribute File: PanelPC renders `/opt/puppetdemo/panelpc/broadcast.txt`, and worker agents sync the same content to `/opt/puppetdemo/broadcasts/broadcast.txt`.
-
-* ✅ QG/DV State: Role-aware package lists from Hiera add QG utilities (`tmux`) and DV toolchains (`build-essential`) only where needed.
-
-* ✅ PPC/Worker State: PanelPC picks up orchestration tools (`git`) while workers inherit helpers (`jq`) alongside the common baseline.
-
-* ✅ Change Topology: Adjust host membership in `puppet/code/environments/production/data/common.yaml` (or add per-node YAML files) and rerun `scripts/puppet.sh test <agent>` to reconverge with the new mapping.

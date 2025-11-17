@@ -40,18 +40,6 @@ env/
 # Ansible artifacts
 *.retry
 
-# Chef artifacts
-chef/local-mode-cache/
-chef/nodes/
-chef/*.pem
-
-# Puppet artifacts
-puppet/agent-panelpc/ssl/
-puppet/agent-qg-1/ssl/
-puppet/agent-qg-2/ssl/
-puppet/agent*/logs/
-puppet/server/logs/
-
 # SaltStack caches
 saltstack/cache/
 
