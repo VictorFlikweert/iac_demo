@@ -1,39 +1,39 @@
 services:
   salt-master:
-    image: saltstack/salt:3006.4
-    command: salt-master -l info
+    image: ubuntu:22.04
+    entrypoint:
+      - /bin/bash
+      - /master-entrypoint.sh
     volumes:
+      - ./saltstack/master-entrypoint.sh:/master-entrypoint.sh:ro
       - ./saltstack/master.d:/etc/salt/master.d
+      - ./saltstack/minion-master.d:/etc/salt/minion.d
       - ./saltstack/states:/srv/salt
-      - ./saltstack/pillar:/srv/pillar
     ports:
       - "4505:4505"
       - "4506:4506"
 
-  salt-minion-panelpc:
-    image: saltstack/salt:3006.4
-    command: salt-minion -l info
-    depends_on:
-      - salt-master
-    volumes:
-      - ./saltstack/minion-panelpc.d:/etc/salt/minion.d
-    hostname: minion-panelpc
-
   salt-minion-qg-1:
-    image: saltstack/salt:3006.4
-    command: salt-minion -l info
+    image: ubuntu:22.04
+    entrypoint:
+      - /bin/bash
+      - /minion-entrypoint.sh
     depends_on:
       - salt-master
     volumes:
+      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
       - ./saltstack/minion-qg-1.d:/etc/salt/minion.d
     hostname: minion-qg-1
 
   salt-minion-qg-2:
-    image: saltstack/salt:3006.4
-    command: salt-minion -l info
+    image: ubuntu:22.04
+    entrypoint:
+      - /bin/bash
+      - /minion-entrypoint.sh
     depends_on:
       - salt-master
     volumes:
+      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
       - ./saltstack/minion-qg-2.d:/etc/salt/minion.d
     hostname: minion-qg-2
 
