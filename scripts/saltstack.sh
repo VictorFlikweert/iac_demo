@@ -4,7 +4,7 @@ set -euo pipefail
 CMD="$(basename "$0")"
 COMPOSE=(docker compose)
 SALT_SERVICES=(salt-master salt-minion-qg-1 salt-minion-qg-2)
-DEFAULT_SCHEDULE_STATE="demo"
+DEFAULT_SCHEDULE_STATE="site"
 DEFAULT_SCHEDULE_MINUTES=1
 SCHEDULE_JOB_PREFIX="enforce"
 

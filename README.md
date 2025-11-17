@@ -33,7 +33,7 @@ docker compose pull
 
 ## SaltStack
 
-- Configuration lives under `saltstack/`: `states/demo` contains the topology-aware state, while `pillar/demo.sls` holds the editable data model (roles, packages, broadcast message, topology defaults).
+- Configuration lives under `saltstack/`: the `site` state pulls in `common` (package refresh/installs) and `transfer` (panelpc note distribution). The top file keys off grains (`roles: panelpc` on the master, `roles: worker` on the minions) to decide what to apply. Toggle the audit helper (`states/audit`) by setting a `run_audit: true` grain on a worker.
 - Launch the environment with the helper:
 
   ```bash
