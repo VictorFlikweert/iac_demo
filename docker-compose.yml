@@ -37,6 +37,18 @@ services:
       - ./saltstack/minion-qg-2.d:/etc/salt/minion.d
     hostname: minion-qg-2
 
+  salt-minion-vs-1:
+    image: ubuntu:22.04
+    entrypoint:
+      - /bin/bash
+      - /minion-entrypoint.sh
+    depends_on:
+      - salt-master
+    volumes:
+      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
+      - ./saltstack/minion-vs-1.d:/etc/salt/minion.d
+    hostname: minion-vs-1
+
   puppetserver:
     image: puppet/puppetserver:latest
     environment:
