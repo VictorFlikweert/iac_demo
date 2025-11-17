@@ -1,11 +1,16 @@
 services:
   salt-master:
-    image: ubuntu:22.04
+    build:
+      context: ./saltstack
     entrypoint:
       - /bin/bash
-      - /master-entrypoint.sh
+    command:
+      - -lc
+      - |
+        salt-master -l info &
+        salt-minion -l info &
+        tail -f /dev/null
     volumes:
-      - ./saltstack/master-entrypoint.sh:/master-entrypoint.sh:ro
       - ./saltstack/master.d:/etc/salt/master.d
       - ./saltstack/minion-master.d:/etc/salt/minion.d
       - ./saltstack/states:/srv/salt
@@ -14,26 +19,34 @@ services:
       - "4506:4506"
 
   salt-minion-qg-1:
-    image: ubuntu:22.04
+    build:
+      context: ./saltstack
     entrypoint:
       - /bin/bash
-      - /minion-entrypoint.sh
+    command:
+      - -lc
+      - |
+        salt-minion -l info &
+        tail -f /dev/null
     depends_on:
       - salt-master
     volumes:
-      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
       - ./saltstack/minion-qg-1.d:/etc/salt/minion.d
     hostname: minion-qg-1
 
   salt-minion-qg-2:
-    image: ubuntu:22.04
+    build:
+      context: ./saltstack
     entrypoint:
       - /bin/bash
-      - /minion-entrypoint.sh
+    command:
+      - -lc
+      - |
+        salt-minion -l info &
+        tail -f /dev/null
     depends_on:
       - salt-master
     volumes:
-      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
       - ./saltstack/minion-qg-2.d:/etc/salt/minion.d
     hostname: minion-qg-2
 
@@ -41,7 +54,7 @@ services:
     build:
       context: ./ansible-pull
       dockerfile: panelpc.Dockerfile
-    command: ["/bin/bash", "-lc", "node_exporter & sleep infinity"]
+    command: [ "/bin/bash", "-lc", "node_exporter & sleep infinity" ]
     environment:
       - ANSIBLE_CONFIG=/workspace/ansible.cfg
     volumes:
@@ -52,14 +65,14 @@ services:
     build:
       context: ./ansible-pull
       dockerfile: worker.Dockerfile
-    command: ["/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e"]
+    command: [ "/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e" ]
     hostname: ansible-worker-qg-1
 
   ansible-worker-qg-2:
     build:
       context: ./ansible-pull
       dockerfile: worker.Dockerfile
-    command: ["/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e"]
+    command: [ "/bin/bash", "-lc", "node_exporter & /usr/sbin/sshd -D -e" ]
     hostname: ansible-worker-qg-2
 
   pushgateway:

@@ -68,9 +68,10 @@ def beacon(config):
   if isinstance(config, dict):
     cfg = config
   elif isinstance(config, list) and config:
-    # If it's a list, the first element should be a dict with our config.
-    if isinstance(config[0], dict):
-      cfg = config[0]
+    # Merge list items that are dicts into one config.
+    for item in config:
+      if isinstance(item, dict):
+        cfg.update(item)
 
   interval = cfg.get("interval", 15)
   pushgateway = cfg.get("pushgateway", "http://pushgateway:9091")
