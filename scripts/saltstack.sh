@@ -3,10 +3,11 @@ set -euo pipefail
 
 CMD="$(basename "$0")"
 COMPOSE=(docker compose)
-SALT_SERVICES=(salt-master salt-minion-qg-1 salt-minion-qg-2)
+SALT_SERVICES=(backend salt-master salt-minion-qg-1 salt-minion-qg-2 salt-minion-vs-1)
 DEFAULT_SCHEDULE_STATE="demo"
 DEFAULT_SCHEDULE_MINUTES=1
 SCHEDULE_JOB_PREFIX="enforce"
+BACKEND_RETURNS_LOG="saltstack/backend/logs/returns.log"
 
 saltctl() {
   "${COMPOSE[@]}" exec salt-master salt "$@"
@@ -29,8 +30,10 @@ Commands:
   state [TARGET] [ARGS]
                  Run salt <target> state.apply (default target: '*')
   shell [CMD]    Open a shell (default: bash) in the salt-master container
+  logs [SERVICES...]
+                 Stream docker logs for the Salt demo (default: all Salt nodes) and tail backend returns
   apply-logs [SERVICES...]
-                 Tail docker logs for the Salt containers (default: all Salt nodes)
+                 Deprecated alias for logs
   schedule-enable [TARGET] [MINUTES] [STATE]
                  Add/refresh a periodic state.apply job (defaults: '*', 1 minute, demo)
   schedule-disable [TARGET] [STATE]
@@ -73,12 +76,24 @@ case "$command" in
       "${COMPOSE[@]}" exec -it salt-master "$@"
     fi
     ;;
-  apply-logs)
+  logs|apply-logs)
     if [[ $# -gt 0 ]]; then
       services=("$@")
     else
       services=("${SALT_SERVICES[@]}")
     fi
+    mkdir -p "$(dirname "$BACKEND_RETURNS_LOG")"
+    touch "$BACKEND_RETURNS_LOG"
+    echo "Tailing backend returns log at $BACKEND_RETURNS_LOG" >&2
+    tail -F "$BACKEND_RETURNS_LOG" &
+    tail_pid=$!
+    cleanup_logs() {
+      if [[ -n "${tail_pid:-}" ]] && kill -0 "$tail_pid" >/dev/null 2>&1; then
+        kill "$tail_pid" >/dev/null 2>&1 || true
+        wait "$tail_pid" >/dev/null 2>&1 || true
+      fi
+    }
+    trap cleanup_logs EXIT
     "${COMPOSE[@]}" logs -f "${services[@]}"
     ;;
   schedule-enable)
