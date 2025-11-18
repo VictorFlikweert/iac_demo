@@ -4,6 +4,8 @@ services:
     entrypoint:
       - /bin/bash
       - /master-entrypoint.sh
+    depends_on:
+      - backend
     volumes:
       - ./saltstack/master-entrypoint.sh:/master-entrypoint.sh:ro
       - ./saltstack/master.d:/etc/salt/master.d
@@ -48,6 +50,14 @@ services:
       - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
       - ./saltstack/minion-vs-1.d:/etc/salt/minion.d
     hostname: minion-vs-1
+
+  backend:
+    build:
+      context: ./saltstack/backend
+    volumes:
+      - ./saltstack/backend/logs:/data
+    ports:
+      - "5001:8080"
 
   puppetserver:
     image: puppet/puppetserver:latest
