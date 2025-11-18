@@ -4,12 +4,9 @@ services:
       context: ./saltstack
     entrypoint:
       - /bin/bash
-    command:
-      - -lc
-      - |
-        salt-master -l info &
-        salt-minion -l info &
-        tail -f /dev/null
+      - /master-entrypoint.sh
+    depends_on:
+      - backend
     volumes:
       - ./saltstack/master.d:/etc/salt/master.d
       - ./saltstack/minion-master.d:/etc/salt/minion.d
@@ -50,6 +47,88 @@ services:
     volumes:
       - ./saltstack/minion-qg-2.d:/etc/salt/minion.d
     hostname: minion-qg-2
+
+  salt-minion-vs-1:
+    image: ubuntu:22.04
+    entrypoint:
+      - /bin/bash
+      - /minion-entrypoint.sh
+    depends_on:
+      - salt-master
+    volumes:
+      - ./saltstack/minion-entrypoint.sh:/minion-entrypoint.sh:ro
+      - ./saltstack/minion-vs-1.d:/etc/salt/minion.d
+    hostname: minion-vs-1
+
+  backend:
+    build:
+      context: ./saltstack/backend
+    volumes:
+      - ./saltstack/backend/logs:/data
+    ports:
+      - "5001:8080"
+
+  puppetserver:
+    image: puppet/puppetserver:latest
+    environment:
+      - PUPPETSERVER_JAVA_ARGS=-Xms512m -Xmx512m
+    volumes:
+      - ./puppet/code:/etc/puppetlabs/code
+      - ./puppet/server/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/autosign.conf:/etc/puppetlabs/puppet/autosign.conf
+    ports:
+      - "8140:8140"
+
+  puppet-agent-panelpc:
+    image: puppet/puppet-agent-ubuntu:latest
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent-panelpc/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-panelpc/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+    hostname: panelpc
+
+  puppet-agent-qg-1:
+    image: puppet/puppet-agent-ubuntu:latest
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent-qg-1/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-qg-1/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+    hostname: qg-1
+
+  puppet-agent-qg-2:
+    image: puppet/puppet-agent-ubuntu:latest
+    depends_on:
+      - puppetserver
+    volumes:
+      - ./puppet/agent-qg-2/puppet.conf:/etc/puppetlabs/puppet/puppet.conf
+      - ./puppet/agent-qg-2/ssl:/etc/puppetlabs/puppet/ssl
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        while true; do
+          /opt/puppetlabs/bin/puppet agent --test --waitforcert 60 || true
+          sleep 60
+        done
+    hostname: qg-2
 
   ansible-panelpc:
     build:
