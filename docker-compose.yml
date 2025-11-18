@@ -14,6 +14,7 @@ services:
       - ./saltstack/master.d:/etc/salt/master.d
       - ./saltstack/minion-master.d:/etc/salt/minion.d
       - ./saltstack/states:/srv/salt
+      - ./saltstack/_beacons:/srv/salt/_beacons:ro
     ports:
       - "4505:4505"
       - "4506:4506"

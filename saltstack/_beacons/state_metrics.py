@@ -24,6 +24,15 @@ def __virtual__():
   return __virtualname__
 
 
+def validate(config):
+  """
+  Basic validation hook to satisfy Salt beacon loader.
+  """
+  if not isinstance(config, (dict, list)):
+    return False, "Configuration for state_metrics must be a list or dict."
+  return True, "Valid beacon configuration."
+
+
 def _get_event_listener():
   if "state_metrics_event" not in __context__:
     __context__["state_metrics_event"] = salt.utils.event.get_event(
@@ -66,7 +75,16 @@ def beacon(config):
   # Normalize beacon config, which may be provided as a dict or a list of dicts under the beacon name.
   cfg = {}
   if isinstance(config, dict):
-    cfg = config
+    if __virtualname__ in config:
+      val = config[__virtualname__]
+      if isinstance(val, list):
+        for item in val:
+          if isinstance(item, dict):
+            cfg.update(item)
+      elif isinstance(val, dict):
+        cfg.update(val)
+    else:
+      cfg = config
   elif isinstance(config, list) and config:
     # Merge list items that are dicts into one config.
     for item in config:

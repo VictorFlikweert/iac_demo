@@ -11,6 +11,7 @@ state_metrics_beacon_config:
     - contents: |
         beacons:
           state_metrics:
-            interval: 15
-            pushgateway: http://pushgateway:9091
-            job: salt_state
+            - interval: 15
+            - pushgateway: http://pushgateway:9091
+            - job: salt_state
+            - disable_during_state_run: True
